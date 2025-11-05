@@ -1,0 +1,304 @@
+// Prisma Schema for LearnMate Platform
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ========================================
+// USER & AUTH MODELS
+// ========================================
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  role         UserRole @default(STUDENT)
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  profile              Profile?
+  teacherClassrooms    Classroom[]
+  studentClassrooms    ClassroomMember[]
+  createdQuestions     Question[]
+  createdTests         Test[]
+  studentTests         StudentTest[]
+  notifications        Notification[]
+
+  @@map("users")
+}
+
+enum UserRole {
+  ADMIN
+  TEACHER
+  STUDENT
+}
+
+model Profile {
+  id        String   @id @default(uuid())
+  userId    String   @unique @map("user_id")
+  firstName String?  @map("first_name")
+  lastName  String?  @map("last_name")
+  phone     String?
+  avatarUrl String?  @map("avatar_url")
+  bio       String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("profiles")
+}
+
+// ========================================
+// CLASSROOM MODELS
+// ========================================
+
+model Classroom {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  teacherId   String   @map("teacher_id")
+  code        String   @unique // Join code for students
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  teacher  User              @relation(fields: [teacherId], references: [id])
+  members  ClassroomMember[]
+  tests    Test[]
+
+  @@map("classrooms")
+}
+
+model ClassroomMember {
+  id          String   @id @default(uuid())
+  classroomId String   @map("classroom_id")
+  studentId   String   @map("student_id")
+  joinedAt    DateTime @default(now()) @map("joined_at")
+
+  // Relations
+  classroom Classroom @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  student   User      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([classroomId, studentId])
+  @@map("classroom_members")
+}
+
+// ========================================
+// SUBJECT & TOPIC MODELS
+// ========================================
+
+model Subject {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  icon        String?
+  orderIndex  Int?     @map("order_index")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  // Relations
+  topics Topic[]
+
+  @@map("subjects")
+}
+
+model Topic {
+  id          String   @id @default(uuid())
+  subjectId   String   @map("subject_id")
+  name        String
+  description String?
+  orderIndex  Int?     @map("order_index")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  // Relations
+  subject   Subject    @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  questions Question[]
+
+  @@map("topics")
+}
+
+// ========================================
+// QUESTION MODELS
+// ========================================
+
+model Question {
+  id           String       @id @default(uuid())
+  topicId      String?      @map("topic_id")
+  questionText String       @map("question_text") @db.Text
+  questionType QuestionType @default(MULTIPLE_CHOICE) @map("question_type")
+  difficulty   Difficulty   @default(MEDIUM)
+  points       Int          @default(1)
+  explanation  String?      @db.Text
+  createdBy    String       @map("created_by")
+  isPublic     Boolean      @default(false) @map("is_public")
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+
+  // Relations
+  topic         Topic?             @relation(fields: [topicId], references: [id], onDelete: SetNull)
+  creator       User               @relation(fields: [createdBy], references: [id])
+  options       QuestionOption[]
+  testQuestions TestQuestion[]
+  studentAnswers StudentAnswer[]
+
+  @@map("questions")
+}
+
+enum QuestionType {
+  MULTIPLE_CHOICE
+  TRUE_FALSE
+  OPEN_ENDED
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+model QuestionOption {
+  id         String  @id @default(uuid())
+  questionId String  @map("question_id")
+  optionText String  @map("option_text") @db.Text
+  isCorrect  Boolean @default(false) @map("is_correct")
+  orderIndex Int     @map("order_index")
+
+  // Relations
+  question       Question        @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  studentAnswers StudentAnswer[]
+
+  @@map("question_options")
+}
+
+// ========================================
+// TEST MODELS
+// ========================================
+
+model Test {
+  id              String    @id @default(uuid())
+  title           String
+  description     String?   @db.Text
+  teacherId       String    @map("teacher_id")
+  classroomId     String?   @map("classroom_id")
+  durationMinutes Int?      @map("duration_minutes")
+  totalPoints     Int       @default(0) @map("total_points")
+  passingScore    Int?      @map("passing_score")
+  isPublished     Boolean   @default(false) @map("is_published")
+  showResults     Boolean   @default(true) @map("show_results")
+  shuffleQuestions Boolean  @default(false) @map("shuffle_questions")
+  startDate       DateTime? @map("start_date")
+  endDate         DateTime? @map("end_date")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  teacher       User           @relation(fields: [teacherId], references: [id])
+  classroom     Classroom?     @relation(fields: [classroomId], references: [id], onDelete: SetNull)
+  testQuestions TestQuestion[]
+  studentTests  StudentTest[]
+
+  @@map("tests")
+}
+
+model TestQuestion {
+  id         String @id @default(uuid())
+  testId     String @map("test_id")
+  questionId String @map("question_id")
+  orderIndex Int    @map("order_index")
+  points     Int    @default(1)
+
+  // Relations
+  test     Test     @relation(fields: [testId], references: [id], onDelete: Cascade)
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([testId, questionId])
+  @@map("test_questions")
+}
+
+// ========================================
+// STUDENT TEST & ANSWER MODELS
+// ========================================
+
+model StudentTest {
+  id          String           @id @default(uuid())
+  testId      String           @map("test_id")
+  studentId   String           @map("student_id")
+  status      StudentTestStatus @default(ASSIGNED)
+  score       Float?
+  percentage  Float?
+  isPassed    Boolean?         @map("is_passed")
+  startedAt   DateTime?        @map("started_at")
+  submittedAt DateTime?        @map("submitted_at")
+  createdAt   DateTime         @default(now()) @map("created_at")
+
+  // Relations
+  test    Test            @relation(fields: [testId], references: [id], onDelete: Cascade)
+  student User            @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  answers StudentAnswer[]
+
+  @@unique([testId, studentId])
+  @@map("student_tests")
+}
+
+enum StudentTestStatus {
+  ASSIGNED
+  STARTED
+  SUBMITTED
+  GRADED
+}
+
+model StudentAnswer {
+  id               String    @id @default(uuid())
+  studentTestId    String    @map("student_test_id")
+  questionId       String    @map("question_id")
+  selectedOptionId String?   @map("selected_option_id")
+  answerText       String?   @map("answer_text") @db.Text
+  isCorrect        Boolean?  @map("is_correct")
+  pointsEarned     Float     @default(0) @map("points_earned")
+  answeredAt       DateTime  @default(now()) @map("answered_at")
+
+  // Relations
+  studentTest    StudentTest     @relation(fields: [studentTestId], references: [id], onDelete: Cascade)
+  question       Question        @relation(fields: [questionId], references: [id])
+  selectedOption QuestionOption? @relation(fields: [selectedOptionId], references: [id])
+
+  @@map("student_answers")
+}
+
+// ========================================
+// NOTIFICATION MODEL
+// ========================================
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String           @map("user_id")
+  title     String
+  message   String           @db.Text
+  type      NotificationType
+  isRead    Boolean          @default(false) @map("is_read")
+  createdAt DateTime         @default(now()) @map("created_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+enum NotificationType {
+  TEST_ASSIGNED
+  TEST_GRADED
+  ANNOUNCEMENT
+  REMINDER
+  SYSTEM
+}
+
+
+
