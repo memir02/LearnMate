@@ -19,6 +19,7 @@ const registerSchema = z.object({
   password: z.string().min(6, 'Şifre en az 6 karakter olmalıdır'),
   confirmPassword: z.string(),
   role: z.enum(['TEACHER', 'STUDENT']),
+  grade: z.string().optional(), // Öğrenci sınıfı
 }).refine((data) => data.password === data.confirmPassword, {
   message: 'Şifreler eşleşmiyor',
   path: ['confirmPassword'],
@@ -34,6 +35,7 @@ export default function RegisterPage() {
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors },
   } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
@@ -41,6 +43,8 @@ export default function RegisterPage() {
       role: 'STUDENT',
     },
   });
+
+  const selectedRole = watch('role');
 
   const onSubmit = async (data: RegisterFormData) => {
     setIsLoading(true);
@@ -164,6 +168,33 @@ export default function RegisterPage() {
               <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>
             )}
           </div>
+
+          {/* Grade - Only for Students */}
+          {selectedRole === 'STUDENT' && (
+            <div>
+              <label htmlFor="grade" className="block text-sm font-medium text-gray-700 mb-2">
+                Sınıf
+              </label>
+              <select
+                {...register('grade')}
+                id="grade"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"
+              >
+                <option value="">Sınıf Seçiniz</option>
+                <option value="1">1. Sınıf</option>
+                <option value="2">2. Sınıf</option>
+                <option value="3">3. Sınıf</option>
+                <option value="4">4. Sınıf</option>
+                <option value="5">5. Sınıf</option>
+                <option value="6">6. Sınıf</option>
+                <option value="7">7. Sınıf</option>
+                <option value="8">8. Sınıf</option>
+              </select>
+              {errors.grade && (
+                <p className="mt-1 text-sm text-red-600">{errors.grade.message}</p>
+              )}
+            </div>
+          )}
 
           {/* Password */}
           <div>

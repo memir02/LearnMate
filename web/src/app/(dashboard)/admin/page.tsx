@@ -13,7 +13,7 @@ export default function AdminDashboard() {
             Admin Dashboard
           </h1>
           <p className="text-gray-600 mt-2">
-            Hoş geldiniz, {user?.profile?.firstName} {user?.profile?.lastName}
+            Hoş geldiniz, Admin
           </p>
         </div>
 

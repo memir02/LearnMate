@@ -23,7 +23,8 @@ model User {
   updatedAt    DateTime @updatedAt @map("updated_at")
 
   // Relations
-  profile              Profile?
+  student              Student?
+  teacher              Teacher?
   teacherClassrooms    Classroom[]
   studentClassrooms    ClassroomMember[]
   createdQuestions     Question[]
@@ -40,20 +41,46 @@ enum UserRole {
   STUDENT
 }
 
-model Profile {
-  id        String   @id @default(uuid())
-  userId    String   @unique @map("user_id")
-  firstName String?  @map("first_name")
-  lastName  String?  @map("last_name")
-  phone     String?
-  avatarUrl String?  @map("avatar_url")
-  bio       String?
-  createdAt DateTime @default(now()) @map("created_at")
+// ========================================
+// STUDENT & TEACHER MODELS
+// ========================================
+
+model Student {
+  id           String   @id @default(uuid())
+  userId       String   @unique @map("user_id")
+  firstName    String   @map("first_name")
+  lastName     String   @map("last_name")
+  grade        String?  // Sınıf (1-8)
+  phone        String?
+  parentPhone  String?  @map("parent_phone") // Veli telefonu
+  avatarUrl    String?  @map("avatar_url")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
   // Relations
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@map("profiles")
+  @@map("students")
+}
+
+model Teacher {
+  id           String   @id @default(uuid())
+  userId       String   @unique @map("user_id")
+  firstName    String   @map("first_name")
+  lastName     String   @map("last_name")
+  subject      String?  // Branş
+  experience   Int?     // Deneyim (yıl)
+  title        String?  // Unvan
+  phone        String?
+  avatarUrl    String?  @map("avatar_url")
+  bio          String?
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("teachers")
 }
 
 // ========================================

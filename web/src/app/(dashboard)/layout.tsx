@@ -44,7 +44,7 @@ export default function DashboardLayout({
 
             <div className="flex items-center space-x-4">
               <span className="text-sm text-gray-700">
-                {user?.profile?.firstName} {user?.profile?.lastName}
+                {user?.student?.firstName || user?.teacher?.firstName} {user?.student?.lastName || user?.teacher?.lastName}
               </span>
               <button
                 onClick={handleLogout}

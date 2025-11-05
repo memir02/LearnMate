@@ -132,8 +132,8 @@ export default function LoginPage() {
         <div className="mt-8 p-4 bg-gray-50 rounded-lg">
           <p className="text-xs text-gray-500 font-semibold mb-2">Erişim Hesapları:</p>
           <div className="text-xs text-gray-600 space-y-1">
-            <p>👨‍💼 Admin: admin@gmail.com / emir123</p>
-            <p>👨‍🏫 Öğretmen: ogretmen@gmail.com / emir123</p>
+            <p>👨‍💼 Admin: admin@gmail.com / admin123</p>
+            <p>👨‍🏫 Öğretmen: ogretmen@gmail.com / ogretmen123</p>
             <p>👨‍🎓 Öğrenci: ogrenci@gmail.com / emir123</p>
           </div>
         </div>

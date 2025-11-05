@@ -33,7 +33,8 @@ export const getAllUsers = async (req: AuthRequest, res: Response) => {
         skip,
         take: limitNum,
         include: {
-          profile: true
+          student: true,
+          teacher: true
         },
         orderBy: {
           createdAt: 'desc'
@@ -72,7 +73,8 @@ export const getUserById = async (req: AuthRequest, res: Response) => {
     const user = await prisma.user.findUnique({
       where: { id },
       include: {
-        profile: true
+        student: true,
+        teacher: true
       }
     });
 
@@ -108,7 +110,10 @@ export const updateUser = async (req: AuthRequest, res: Response) => {
     // Check if user exists
     const existingUser = await prisma.user.findUnique({
       where: { id },
-      include: { profile: true }
+      include: { 
+        student: true,
+        teacher: true
+      }
     });
 
     if (!existingUser) {
@@ -118,25 +123,40 @@ export const updateUser = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // Update user and profile
+    // Update user
     const user = await prisma.user.update({
       where: { id },
       data: {
         email: email || existingUser.email,
         role: role || existingUser.role,
-        isActive: isActive !== undefined ? isActive : existingUser.isActive,
-        profile: {
-          update: {
-            firstName: firstName || existingUser.profile?.firstName,
-            lastName: lastName || existingUser.profile?.lastName,
-            phone: phone || existingUser.profile?.phone
-          }
-        }
+        isActive: isActive !== undefined ? isActive : existingUser.isActive
       },
       include: {
-        profile: true
+        student: true,
+        teacher: true
       }
     });
+
+    // Update role-specific profile
+    if (existingUser.role === 'STUDENT' && existingUser.student) {
+      await prisma.student.update({
+        where: { userId: id },
+        data: {
+          firstName: firstName || existingUser.student.firstName,
+          lastName: lastName || existingUser.student.lastName,
+          phone: phone || existingUser.student.phone
+        }
+      });
+    } else if (existingUser.role === 'TEACHER' && existingUser.teacher) {
+      await prisma.teacher.update({
+        where: { userId: id },
+        data: {
+          firstName: firstName || existingUser.teacher.firstName,
+          lastName: lastName || existingUser.teacher.lastName,
+          phone: phone || existingUser.teacher.phone
+        }
+      });
+    }
 
     // Remove password hash
     const { passwordHash, ...userWithoutPassword } = user;

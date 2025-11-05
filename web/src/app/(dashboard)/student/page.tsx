@@ -13,7 +13,8 @@ export default function StudentDashboard() {
             Öğrenci Paneli
           </h1>
           <p className="text-gray-600 mt-2">
-            Hoş geldiniz, {user?.profile?.firstName} {user?.profile?.lastName}
+            Hoş geldiniz, {user?.student?.firstName} {user?.student?.lastName}
+            {user?.student?.grade && <span className="ml-2 text-sm text-blue-600">({user.student.grade}. Sınıf)</span>}
           </p>
         </div>
 

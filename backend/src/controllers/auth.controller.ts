@@ -7,7 +7,7 @@ import { AuthRequest } from '../middleware/auth.middleware';
 // Kullanıcı kayıt kısmı
 export const register = async (req: Request, res: Response) => {
   try {
-    const { email, password, firstName, lastName, role } = req.body;
+    const { email, password, firstName, lastName, role, grade } = req.body;
 
     // Validate input
     if (!email || !password || !firstName || !lastName) {
@@ -41,21 +41,33 @@ export const register = async (req: Request, res: Response) => {
     // Hash password
     const passwordHash = await hashPassword(password);
 
-    // Create user with profile
+    // Create user with role-specific profile
     const user = await prisma.user.create({
       data: {
         email,
         passwordHash,
         role: userRole as 'ADMIN' | 'TEACHER' | 'STUDENT',
-        profile: {
-          create: {
-            firstName,
-            lastName
+        ...(userRole === 'STUDENT' && {
+          student: {
+            create: {
+              firstName,
+              lastName,
+              grade: grade || null
+            }
           }
-        }
+        }),
+        ...(userRole === 'TEACHER' && {
+          teacher: {
+            create: {
+              firstName,
+              lastName
+            }
+          }
+        })
       },
       include: {
-        profile: true
+        student: true,
+        teacher: true
       }
     });
 
@@ -103,7 +115,8 @@ export const login = async (req: Request, res: Response) => {
     const user = await prisma.user.findUnique({
       where: { email },
       include: {
-        profile: true
+        student: true,
+        teacher: true
       }
     });
 
@@ -167,7 +180,8 @@ export const getMe = async (req: AuthRequest, res: Response) => {
     const user = await prisma.user.findUnique({
       where: { id: userId },
       include: {
-        profile: true
+        student: true,
+        teacher: true
       }
     });
 
@@ -203,7 +217,10 @@ export const updateProfile = async (req: AuthRequest, res: Response) => {
     // Check if user exists
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      include: { profile: true }
+      include: { 
+        student: true,
+        teacher: true
+      }
     });
 
     if (!user) {
@@ -213,16 +230,29 @@ export const updateProfile = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // Update profile
-    const updatedProfile = await prisma.profile.update({
-      where: { userId: userId },
-      data: {
-        firstName: firstName || user.profile?.firstName,
-        lastName: lastName || user.profile?.lastName,
-        phone: phone || user.profile?.phone,
-        bio: bio || user.profile?.bio
-      }
-    });
+    // Update role-specific profile
+    let updatedProfile;
+    
+    if (user.role === 'STUDENT' && user.student) {
+      updatedProfile = await prisma.student.update({
+        where: { userId: userId },
+        data: {
+          firstName: firstName || user.student.firstName,
+          lastName: lastName || user.student.lastName,
+          phone: phone || user.student.phone
+        }
+      });
+    } else if (user.role === 'TEACHER' && user.teacher) {
+      updatedProfile = await prisma.teacher.update({
+        where: { userId: userId },
+        data: {
+          firstName: firstName || user.teacher.firstName,
+          lastName: lastName || user.teacher.lastName,
+          phone: phone || user.teacher.phone,
+          bio: bio || user.teacher.bio
+        }
+      });
+    }
 
     res.status(200).json({
       status: 'success',

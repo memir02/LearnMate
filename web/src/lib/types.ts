@@ -3,13 +3,27 @@ export interface User {
   id: string;
   email: string;
   role: 'ADMIN' | 'TEACHER' | 'STUDENT';
-  profile?: Profile;
+  student?: Student;
+  teacher?: Teacher;
 }
 
-export interface Profile {
+export interface Student {
   id: string;
-  firstName?: string;
-  lastName?: string;
+  firstName: string;
+  lastName: string;
+  grade?: string; // Sınıf (1-8)
+  phone?: string;
+  parentPhone?: string; // Veli telefonu
+  avatarUrl?: string;
+}
+
+export interface Teacher {
+  id: string;
+  firstName: string;
+  lastName: string;
+  subject?: string; // Branş
+  experience?: number; // Deneyim (yıl)
+  title?: string; // Unvan
   phone?: string;
   avatarUrl?: string;
   bio?: string;
