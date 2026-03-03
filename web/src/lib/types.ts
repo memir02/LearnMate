@@ -53,14 +53,54 @@ export interface Classroom {
   id: string;
   name: string;
   description?: string;
+  subject?: string;
+  grade?: string;
   teacherId: string;
   code: string;
+  inviteOnly: boolean;
+  autoApprove: boolean;
   isActive: boolean;
   createdAt: string;
+  updatedAt: string;
   teacher?: User;
+  members?: ClassroomMember[];
   _count?: {
     members: number;
+    invitations?: number;
   };
+}
+
+export type ClassroomMemberStatus = 'ACTIVE' | 'REMOVED' | 'LEFT';
+
+export interface ClassroomMember {
+  id: string;
+  classroomId: string;
+  studentId: string;
+  status: ClassroomMemberStatus;
+  role?: string;
+  joinedAt: string;
+  leftAt?: string;
+  classroom?: Classroom;
+  student?: User;
+}
+
+export type InvitationStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'CANCELLED' | 'EXPIRED';
+export type InvitationType = 'DIRECT' | 'CODE_REQUEST';
+
+export interface ClassroomInvitation {
+  id: string;
+  classroomId: string;
+  studentId: string;
+  invitedBy: string;
+  status: InvitationStatus;
+  invitationType: InvitationType;
+  message?: string;
+  createdAt: string;
+  respondedAt?: string;
+  expiresAt?: string;
+  classroom?: Classroom;
+  student?: User;
+  inviter?: User;
 }
 
 // Subject & Topic Types
@@ -113,6 +153,9 @@ export interface Test {
   id: string;
   title: string;
   description?: string;
+  subject?: string;
+  topic?: string;
+  grade?: string;
   teacherId: string;
   classroomId?: string;
   durationMinutes?: number;
@@ -128,7 +171,12 @@ export interface Test {
   classroom?: Classroom;
   _count?: {
     testQuestions: number;
+    studentTests?: number;
   };
+  // Backend'den gelen ek istatistikler
+  questionCount?: number;
+  studentCount?: number;
+  completedCount?: number;
 }
 
 export interface TestQuestion {
@@ -175,7 +223,14 @@ export type NotificationType =
   | 'TEST_GRADED' 
   | 'ANNOUNCEMENT' 
   | 'REMINDER' 
-  | 'SYSTEM';
+  | 'SYSTEM'
+  | 'CLASSROOM_INVITE_RECEIVED'
+  | 'CLASSROOM_JOIN_REQUEST'
+  | 'CLASSROOM_INVITE_ACCEPTED'
+  | 'CLASSROOM_INVITE_REJECTED'
+  | 'CLASSROOM_JOIN_APPROVED'
+  | 'CLASSROOM_JOIN_REJECTED'
+  | 'CLASSROOM_MEMBER_REMOVED';
 
 export interface Notification {
   id: string;

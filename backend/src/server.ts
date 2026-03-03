@@ -27,13 +27,35 @@ app.use(cors({
   credentials: true
 }));
 
-// Rate Limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
-  message: 'Too many requests from this IP, please try again later.'
-});
-app.use('/api/', limiter);
+// Rate Limiting - Development'ta devre dışı, Production'da aktif
+if (process.env.NODE_ENV === 'production') {
+  // Production için genel rate limit
+  const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 dakika
+    max: 100, // 100 istek
+    message: 'Too many requests from this IP, please try again later.',
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+  app.use('/api/', limiter);
+}
+
+// Authentication route'ları için özel rate limiting (her ortamda aktif)
+app.use('/api/auth/login', rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 dakika
+  max: process.env.NODE_ENV === 'production' ? 5 : 50, // Production'da 5, Development'ta 50
+  message: 'Too many login attempts, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
+}));
+
+app.use('/api/auth/register', rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 saat
+  max: process.env.NODE_ENV === 'production' ? 3 : 30, // Production'da 3, Development'ta 30
+  message: 'Too many registration attempts, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
+}));
 
 // Body Parser
 app.use(express.json({ limit: '10mb' }));
@@ -49,6 +71,13 @@ app.use(cookieParser());
 // Import routes
 import authRoutes from './routes/auth.routes';
 import userRoutes from './routes/user.routes';
+import classroomRoutes from './routes/classroom.routes';
+import invitationRoutes from './routes/invitation.routes';
+import questionRoutes from './routes/question.routes';
+import testRoutes from './routes/test.routes';
+import studentTestRoutes from './routes/student-test.routes';
+import practiceRoutes from './routes/practice.routes';
+import auditLogRoutes from './routes/auditLog.routes';
 
 // Health Check
 app.get('/health', (req, res) => {
@@ -62,10 +91,14 @@ app.get('/health', (req, res) => {
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
-// app.use('/api/classrooms', classroomRoutes);
+app.use('/api/classrooms', classroomRoutes);
+app.use('/api/invitations', invitationRoutes);
+app.use('/api/questions', questionRoutes);
+app.use('/api/tests', testRoutes);
+app.use('/api/student-tests', studentTestRoutes);
+app.use('/api/practice', practiceRoutes);
+app.use('/api/audit-logs', auditLogRoutes);
 // app.use('/api/subjects', subjectRoutes);
-// app.use('/api/questions', questionRoutes);
-// app.use('/api/tests', testRoutes);
 // app.use('/api/notifications', notificationRoutes);
 
 // 404 Handler

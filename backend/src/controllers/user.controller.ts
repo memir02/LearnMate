@@ -1,8 +1,9 @@
 import { Response } from 'express';
 import prisma from '../config/database';
 import { AuthRequest } from '../middleware/auth.middleware';
+import { createAuditLog, getIpAddress, getUserAgent } from '../utils/auditLog';
 
-// Tğm kullaanıcıları getir (Admin only)
+// Tüm kullanıcıları getir (Admin)
 export const getAllUsers = async (req: AuthRequest, res: Response) => {
   try {
     const { role, search, page = '1', limit = '10' } = req.query;
@@ -11,7 +12,7 @@ export const getAllUsers = async (req: AuthRequest, res: Response) => {
     const limitNum = parseInt(limit as string);
     const skip = (pageNum - 1) * limitNum;
 
-    // Build where clause
+
     const where: any = {};
 
     if (role) {
@@ -21,12 +22,14 @@ export const getAllUsers = async (req: AuthRequest, res: Response) => {
     if (search) {
       where.OR = [
         { email: { contains: search as string, mode: 'insensitive' } },
-        { profile: { firstName: { contains: search as string, mode: 'insensitive' } } },
-        { profile: { lastName: { contains: search as string, mode: 'insensitive' } } }
+        { student: { firstName: { contains: search as string, mode: 'insensitive' } } },
+        { student: { lastName: { contains: search as string, mode: 'insensitive' } } },
+        { teacher: { firstName: { contains: search as string, mode: 'insensitive' } } },
+        { teacher: { lastName: { contains: search as string, mode: 'insensitive' } } }
       ];
     }
 
-    // Get users
+    // Kullanıcıları getir
     const [users, total] = await Promise.all([
       prisma.user.findMany({
         where,
@@ -43,7 +46,6 @@ export const getAllUsers = async (req: AuthRequest, res: Response) => {
       prisma.user.count({ where })
     ]);
 
-    // Remove password hashes
     const usersWithoutPasswords = users.map(({ passwordHash, ...user }) => user);
 
     res.status(200).json({
@@ -60,12 +62,12 @@ export const getAllUsers = async (req: AuthRequest, res: Response) => {
     console.error('Get all users error:', error);
     res.status(500).json({
       status: 'error',
-      message: 'Error fetching users'
+      message: 'Kullanıcılar getirilirken bir hata oluştu.'
     });
   }
 };
 
-// Get user by ID
+// ID ile kullanıcı getir
 export const getUserById = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
@@ -81,11 +83,11 @@ export const getUserById = async (req: AuthRequest, res: Response) => {
     if (!user) {
       return res.status(404).json({
         status: 'error',
-        message: 'User not found'
+        message: 'Kullanıcı bulunamadı.'
       });
     }
 
-    // Remove password hash
+
     const { passwordHash, ...userWithoutPassword } = user;
 
     res.status(200).json({
@@ -96,18 +98,18 @@ export const getUserById = async (req: AuthRequest, res: Response) => {
     console.error('Get user by ID error:', error);
     res.status(500).json({
       status: 'error',
-      message: 'Error fetching user'
+      message: 'Kullanıcı getirilirken bir hata oluştu.'
     });
   }
 };
 
-// Kullanıcı Guncelle (Admin only)
+// Kullanıcı güncelle (Admin)
 export const updateUser = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
     const { email, role, isActive, firstName, lastName, phone } = req.body;
 
-    // Check if user exists
+
     const existingUser = await prisma.user.findUnique({
       where: { id },
       include: { 
@@ -119,11 +121,11 @@ export const updateUser = async (req: AuthRequest, res: Response) => {
     if (!existingUser) {
       return res.status(404).json({
         status: 'error',
-        message: 'User not found'
+        message: 'Kullanıcı bulunamadı.'
       });
     }
 
-    // Update user
+
     const user = await prisma.user.update({
       where: { id },
       data: {
@@ -137,7 +139,7 @@ export const updateUser = async (req: AuthRequest, res: Response) => {
       }
     });
 
-    // Update role-specific profile
+
     if (existingUser.role === 'STUDENT' && existingUser.student) {
       await prisma.student.update({
         where: { userId: id },
@@ -158,29 +160,58 @@ export const updateUser = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // Remove password hash
+
+    // Audit log - Kullanıcı güncelleme
+    const adminId = req.user?.id;
+    if (adminId) {
+      // isActive değişikliği yapıldıysa özel log
+      if (isActive !== undefined && isActive !== existingUser.isActive) {
+        await createAuditLog({
+          userId: adminId,
+          action: isActive ? 'USER_APPROVED' : 'USER_REJECTED',
+          entityType: 'USER',
+          entityId: user.id,
+          entityName: user.email,
+          details: { role: user.role, previousStatus: existingUser.isActive },
+          ipAddress: getIpAddress(req),
+          userAgent: getUserAgent(req),
+        });
+      } else {
+        await createAuditLog({
+          userId: adminId,
+          action: 'USER_UPDATED',
+          entityType: 'USER',
+          entityId: user.id,
+          entityName: user.email,
+          details: { role: user.role },
+          ipAddress: getIpAddress(req),
+          userAgent: getUserAgent(req),
+        });
+      }
+    }
+
     const { passwordHash, ...userWithoutPassword } = user;
 
     res.status(200).json({
       status: 'success',
-      message: 'User updated successfully',
+      message: 'Kullanıcı başarıyla güncellendi.',
       data: userWithoutPassword
     });
   } catch (error) {
     console.error('Update user error:', error);
     res.status(500).json({
       status: 'error',
-      message: 'Error updating user'
+      message: 'Kullanıcı güncellenirken bir hata oluştu.'
     });
   }
 };
 
-// Delete user (Admin only)
+
 export const deleteUser = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
 
-    // Check if user exists
+
     const user = await prisma.user.findUnique({
       where: { id }
     });
@@ -188,37 +219,52 @@ export const deleteUser = async (req: AuthRequest, res: Response) => {
     if (!user) {
       return res.status(404).json({
         status: 'error',
-        message: 'User not found'
+        message: 'Kullanıcı bulunamadı.'
       });
     }
 
-    // Don't allow deleting yourself
+
     if (id === req.user?.id) {
       return res.status(400).json({
         status: 'error',
-        message: 'You cannot delete your own account'
+        message: 'Kendi hesabınızı silemezsiniz.'
       });
     }
 
-    // Delete user (cascade will delete profile)
+
+    // Audit log - Kullanıcı silme
+    const adminId = req.user?.id;
+    if (adminId) {
+      await createAuditLog({
+        userId: adminId,
+        action: 'USER_DELETED',
+        entityType: 'USER',
+        entityId: user.id,
+        entityName: user.email,
+        details: { role: user.role },
+        ipAddress: getIpAddress(req),
+        userAgent: getUserAgent(req),
+      });
+    }
+
     await prisma.user.delete({
       where: { id }
     });
 
     res.status(200).json({
       status: 'success',
-      message: 'User deleted successfully'
+      message: 'Kullanıcı başarıyla silindi.'
     });
   } catch (error) {
     console.error('Delete user error:', error);
     res.status(500).json({
       status: 'error',
-      message: 'Error deleting user'
+      message: 'Kullanıcı silinirken bir hata oluştu.'
     });
   }
 };
 
-// Get user statistics (Admin)
+// Kullanıcı istatistikleri getir (Admin)
 export const getUserStats = async (req: AuthRequest, res: Response) => {
   try {
     const [totalUsers, totalTeachers, totalStudents, totalAdmins] = await Promise.all([
@@ -241,7 +287,57 @@ export const getUserStats = async (req: AuthRequest, res: Response) => {
     console.error('Get user stats error:', error);
     res.status(500).json({
       status: 'error',
-      message: 'Error fetching user statistics'
+      message: 'Kullanıcı istatistikleri getirilirken bir hata oluştu.'
+    });
+  }
+};
+
+// Öğrenci ara (Teacher)
+export const searchStudents = async (req: AuthRequest, res: Response) => {
+  try {
+    const { search, limit = '20' } = req.query;
+
+    if (!search || (search as string).length < 2) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Arama için en az 2 karakter gereklidir.'
+      });
+    }
+
+    const limitNum = parseInt(limit as string);
+
+    // Sadece öğrencileri ara
+    const students = await prisma.user.findMany({
+      where: {
+        role: 'STUDENT',
+        isActive: true,
+        OR: [
+          { email: { contains: search as string, mode: 'insensitive' } },
+          { student: { firstName: { contains: search as string, mode: 'insensitive' } } },
+          { student: { lastName: { contains: search as string, mode: 'insensitive' } } }
+        ]
+      },
+      take: limitNum,
+      include: {
+        student: true
+      },
+      orderBy: [
+        { student: { firstName: 'asc' } }
+      ]
+    });
+
+    // Şifreleri kaldır
+    const studentsWithoutPasswords = students.map(({ passwordHash, ...student }) => student);
+
+    res.status(200).json({
+      status: 'success',
+      data: studentsWithoutPasswords
+    });
+  } catch (error) {
+    console.error('Search students error:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Öğrenciler aranırken bir hata oluştu.'
     });
   }
 };

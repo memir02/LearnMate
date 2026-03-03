@@ -6,7 +6,7 @@ export interface JWTPayload {
   role: 'ADMIN' | 'TEACHER' | 'STUDENT';
 }
 
-// Generate JWT Token
+//  JWT Token oluşturma
 export const generateToken = (payload: JWTPayload): string => {
   const secret = process.env.JWT_SECRET;
   if (!secret) {
@@ -16,7 +16,7 @@ export const generateToken = (payload: JWTPayload): string => {
   return jwt.sign(payload, secret, { expiresIn: '7d' });
 };
 
-// Verify JWT Token
+// JWT Token doğrulama
 export const verifyToken = (token: string): JWTPayload => {
   const secret = process.env.JWT_SECRET;
   if (!secret) {

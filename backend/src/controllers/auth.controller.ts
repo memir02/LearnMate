@@ -3,21 +3,22 @@ import prisma from '../config/database';
 import { hashPassword, comparePassword } from '../utils/bcrypt.utils';
 import { generateToken } from '../utils/jwt.utils';
 import { AuthRequest } from '../middleware/auth.middleware';
+import { createAuditLog, getIpAddress, getUserAgent } from '../utils/auditLog';
 
 // Kullanıcı kayıt kısmı
 export const register = async (req: Request, res: Response) => {
   try {
     const { email, password, firstName, lastName, role, grade } = req.body;
 
-    // Validate input
+
     if (!email || !password || !firstName || !lastName) {
       return res.status(400).json({
         status: 'error',
-        message: 'All fields are required'
+        message: 'Tüm alanlar zorunludur.'
       });
     }
 
-    // Check if user already exists
+
     const existingUser = await prisma.user.findUnique({
       where: { email }
     });
@@ -25,23 +26,23 @@ export const register = async (req: Request, res: Response) => {
     if (existingUser) {
       return res.status(400).json({
         status: 'error',
-        message: 'User with this email already exists'
+        message: 'Bu email adresi zaten kayıtlı.'
       });
     }
 
-    // Validate role
+
     const userRole = role?.toUpperCase() || 'STUDENT';
     if (!['ADMIN', 'TEACHER', 'STUDENT'].includes(userRole)) {
       return res.status(400).json({
         status: 'error',
-        message: 'Invalid role. Must be ADMIN, TEACHER, or STUDENT'
+        message: 'Geçersiz rol. ADMIN, TEACHER veya STUDENT olmalı.'
       });
     }
 
-    // Hash password
+
     const passwordHash = await hashPassword(password);
 
-    // Create user with role-specific profile
+
     const user = await prisma.user.create({
       data: {
         email,
@@ -71,19 +72,31 @@ export const register = async (req: Request, res: Response) => {
       }
     });
 
-    // Generate JWT token
+
     const token = generateToken({
       id: user.id,
       email: user.email,
       role: user.role
     });
 
-    // Remove password hash from response
+
+    // Audit log - Kullanıcı kaydı
+    await createAuditLog({
+      userId: user.id,
+      action: 'USER_REGISTERED',
+      entityType: 'USER',
+      entityId: user.id,
+      entityName: email,
+      details: { role: user.role },
+      ipAddress: getIpAddress(req),
+      userAgent: getUserAgent(req),
+    });
+
     const { passwordHash: _, ...userWithoutPassword } = user;
 
     res.status(201).json({
       status: 'success',
-      message: 'User registered successfully',
+      message: 'Kullanıcı başarıyla kaydedildi.',
       data: {
         user: userWithoutPassword,
         token
@@ -93,7 +106,7 @@ export const register = async (req: Request, res: Response) => {
     console.error('Register error:', error);
     res.status(500).json({
       status: 'error',
-      message: 'Error registering user'
+      message: 'Kullanıcı kaydedilirken bir hata oluştu.'
     });
   }
 };
@@ -103,15 +116,15 @@ export const login = async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
 
-    // Validate input
+   
     if (!email || !password) {
       return res.status(400).json({
         status: 'error',
-        message: 'Email and password are required'
+        message: 'Email ve şifre gereklidir.'
       });
     }
 
-    // Find user
+
     const user = await prisma.user.findUnique({
       where: { email },
       include: {
@@ -123,41 +136,52 @@ export const login = async (req: Request, res: Response) => {
     if (!user) {
       return res.status(401).json({
         status: 'error',
-        message: 'Invalid email or password'
+        message: 'Email veya şifre hatalı.'
       });
     }
 
-    // Check if user is active
+
     if (!user.isActive) {
-      return res.status(401).json({
+      return res.status(403).json({
         status: 'error',
-        message: 'Your account has been deactivated'
+        message: 'Hesabınız devre dışı bırakılmış.'
       });
     }
 
-    // Verify password
+  
     const isPasswordValid = await comparePassword(password, user.passwordHash);
 
     if (!isPasswordValid) {
       return res.status(401).json({
         status: 'error',
-        message: 'Invalid email or password'
+        message: 'Email veya şifre hatalı.'
       });
     }
 
-    // Generate JWT token
+    // JWT Token oluşturma
     const token = generateToken({
       id: user.id,
       email: user.email,
       role: user.role
     });
 
-    // Remove password hash from response
+    // Audit log - Başarılı giriş
+    await createAuditLog({
+      userId: user.id,
+      action: 'USER_LOGIN',
+      entityType: 'USER',
+      entityId: user.id,
+      entityName: user.email,
+      details: { role: user.role },
+      ipAddress: getIpAddress(req),
+      userAgent: getUserAgent(req),
+    });
+ 
     const { passwordHash: _, ...userWithoutPassword } = user;
 
     res.status(200).json({
       status: 'success',
-      message: 'Login successful',
+      message: 'Giriş başarılı.',
       data: {
         user: userWithoutPassword,
         token
@@ -167,12 +191,12 @@ export const login = async (req: Request, res: Response) => {
     console.error('Login error:', error);
     res.status(500).json({
       status: 'error',
-      message: 'Error logging in'
+      message: 'Giriş yapılırken bir hata oluştu.'
     });
   }
 };
 
-// Get current user
+
 export const getMe = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?.id;
@@ -188,11 +212,11 @@ export const getMe = async (req: AuthRequest, res: Response) => {
     if (!user) {
       return res.status(404).json({
         status: 'error',
-        message: 'User not found'
+        message: 'Kullanıcı bulunamadı.'
       });
     }
 
-    // Remove password hash from response
+    
     const { passwordHash: _, ...userWithoutPassword } = user;
 
     res.status(200).json({
@@ -203,18 +227,18 @@ export const getMe = async (req: AuthRequest, res: Response) => {
     console.error('Get me error:', error);
     res.status(500).json({
       status: 'error',
-      message: 'Error fetching user data'
+      message: 'Kullanıcı bilgileri getirilirken bir hata oluştu.'
     });
   }
 };
 
-// Update profile
+
 export const updateProfile = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?.id;
-    const { firstName, lastName, phone, bio } = req.body;
+    const { firstName, lastName, phone, bio, grade, parentPhone, subject, experience, title } = req.body;
 
-    // Check if user exists
+
     const user = await prisma.user.findUnique({
       where: { id: userId },
       include: { 
@@ -226,11 +250,11 @@ export const updateProfile = async (req: AuthRequest, res: Response) => {
     if (!user) {
       return res.status(404).json({
         status: 'error',
-        message: 'User not found'
+        message: 'Kullanıcı bulunamadı.'
       });
     }
 
-    // Update role-specific profile
+    // Rol bazlı profil güncelleme
     let updatedProfile;
     
     if (user.role === 'STUDENT' && user.student) {
@@ -239,7 +263,9 @@ export const updateProfile = async (req: AuthRequest, res: Response) => {
         data: {
           firstName: firstName || user.student.firstName,
           lastName: lastName || user.student.lastName,
-          phone: phone || user.student.phone
+          phone: phone || user.student.phone,
+          grade: grade !== undefined ? grade : user.student.grade,
+          parentPhone: parentPhone !== undefined ? parentPhone : user.student.parentPhone
         }
       });
     } else if (user.role === 'TEACHER' && user.teacher) {
@@ -249,26 +275,29 @@ export const updateProfile = async (req: AuthRequest, res: Response) => {
           firstName: firstName || user.teacher.firstName,
           lastName: lastName || user.teacher.lastName,
           phone: phone || user.teacher.phone,
-          bio: bio || user.teacher.bio
+          bio: bio !== undefined ? bio : user.teacher.bio,
+          subject: subject !== undefined ? subject : user.teacher.subject,
+          experience: experience !== undefined ? experience : user.teacher.experience,
+          title: title !== undefined ? title : user.teacher.title
         }
       });
     }
 
     res.status(200).json({
       status: 'success',
-      message: 'Profile updated successfully',
+      message: 'Profil başarıyla güncellendi.',
       data: updatedProfile
     });
   } catch (error) {
     console.error('Update profile error:', error);
     res.status(500).json({
       status: 'error',
-      message: 'Error updating profile'
+      message: 'Profil güncellenirken bir hata oluştu.'
     });
   }
 };
 
-// Change password
+
 export const changePassword = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?.id;
@@ -277,11 +306,11 @@ export const changePassword = async (req: AuthRequest, res: Response) => {
     if (!currentPassword || !newPassword) {
       return res.status(400).json({
         status: 'error',
-        message: 'Current password and new password are required'
+        message: 'Mevcut şifre ve yeni şifre gereklidir.'
       });
     }
 
-    // Find user
+    // Kullanıcı bulma
     const user = await prisma.user.findUnique({
       where: { id: userId }
     });
@@ -289,38 +318,49 @@ export const changePassword = async (req: AuthRequest, res: Response) => {
     if (!user) {
       return res.status(404).json({
         status: 'error',
-        message: 'User not found'
+        message: 'Kullanıcı bulunamadı.'
       });
     }
 
-    // Verify current password
+    // Mevcut şifre doğrulama
     const isPasswordValid = await comparePassword(currentPassword, user.passwordHash);
 
     if (!isPasswordValid) {
       return res.status(401).json({
         status: 'error',
-        message: 'Current password is incorrect'
+        message: 'Mevcut şifre hatalı.'
       });
     }
 
-    // Hash new password
+    // Yeni şifre şifreleme
     const newPasswordHash = await hashPassword(newPassword);
 
-    // Update password
+    // Şifre güncelleme
     await prisma.user.update({
       where: { id: userId },
       data: { passwordHash: newPasswordHash }
     });
 
+    // Audit log - Şifre değiştirme
+    await createAuditLog({
+      userId: user.id,
+      action: 'USER_PASSWORD_CHANGED',
+      entityType: 'USER',
+      entityId: user.id,
+      entityName: user.email,
+      ipAddress: getIpAddress(req),
+      userAgent: getUserAgent(req),
+    });
+
     res.status(200).json({
       status: 'success',
-      message: 'Password changed successfully'
+      message: 'Şifre başarıyla değiştirildi.'
     });
   } catch (error) {
     console.error('Change password error:', error);
     res.status(500).json({
       status: 'error',
-      message: 'Error changing password'
+      message: 'Şifre değiştirilirken bir hata oluştu.'
     });
   }
 };

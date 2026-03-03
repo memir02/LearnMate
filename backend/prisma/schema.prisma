@@ -23,14 +23,18 @@ model User {
   updatedAt    DateTime @updatedAt @map("updated_at")
 
   // Relations
-  student              Student?
-  teacher              Teacher?
-  teacherClassrooms    Classroom[]
-  studentClassrooms    ClassroomMember[]
-  createdQuestions     Question[]
-  createdTests         Test[]
-  studentTests         StudentTest[]
-  notifications        Notification[]
+  student             Student?
+  teacher             Teacher?
+  teacherClassrooms   Classroom[]
+  studentClassrooms   ClassroomMember[]
+  sentInvitations     ClassroomInvitation[] @relation("InvitationSender")
+  receivedInvitations ClassroomInvitation[] @relation("InvitationReceiver")
+  createdQuestions    Question[]
+  createdTests        Test[]
+  studentTests        StudentTest[]
+  practiceSessions    PracticeSession[]
+  notifications       Notification[]
+  auditLogs           AuditLog[]
 
   @@map("users")
 }
@@ -46,16 +50,16 @@ enum UserRole {
 // ========================================
 
 model Student {
-  id           String   @id @default(uuid())
-  userId       String   @unique @map("user_id")
-  firstName    String   @map("first_name")
-  lastName     String   @map("last_name")
-  grade        String?  // Sınıf (1-8)
-  phone        String?
-  parentPhone  String?  @map("parent_phone") // Veli telefonu
-  avatarUrl    String?  @map("avatar_url")
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  id          String   @id @default(uuid())
+  userId      String   @unique @map("user_id")
+  firstName   String   @map("first_name")
+  lastName    String   @map("last_name")
+  grade       String? // Sınıf (1-8)
+  phone       String?
+  parentPhone String?  @map("parent_phone") // Veli telefonu
+  avatarUrl   String?  @map("avatar_url")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
   // Relations
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -64,18 +68,18 @@ model Student {
 }
 
 model Teacher {
-  id           String   @id @default(uuid())
-  userId       String   @unique @map("user_id")
-  firstName    String   @map("first_name")
-  lastName     String   @map("last_name")
-  subject      String?  // Branş
-  experience   Int?     // Deneyim (yıl)
-  title        String?  // Unvan
-  phone        String?
-  avatarUrl    String?  @map("avatar_url")
-  bio          String?
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  id         String   @id @default(uuid())
+  userId     String   @unique @map("user_id")
+  firstName  String   @map("first_name")
+  lastName   String   @map("last_name")
+  subject    String? // Branş
+  experience Int? // Deneyim (yıl)
+  title      String? // Unvan
+  phone      String?
+  avatarUrl  String?  @map("avatar_url")
+  bio        String?
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
 
   // Relations
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -91,25 +95,33 @@ model Classroom {
   id          String   @id @default(uuid())
   name        String
   description String?
+  subject     String? // Ders adı (Matematik, Türkçe, vb.)
+  grade       String? // Sınıf seviyesi (4, 5, 8, vb.)
   teacherId   String   @map("teacher_id")
   code        String   @unique // Join code for students
+  inviteOnly  Boolean  @default(false) @map("invite_only") // Sadece davet ile katılım
+  autoApprove Boolean  @default(false) @map("auto_approve") // Kodla katılımları otomatik onayla
   isActive    Boolean  @default(true) @map("is_active")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   // Relations
-  teacher  User              @relation(fields: [teacherId], references: [id])
-  members  ClassroomMember[]
-  tests    Test[]
+  teacher     User                  @relation(fields: [teacherId], references: [id])
+  members     ClassroomMember[]
+  invitations ClassroomInvitation[]
+  tests       Test[]
 
   @@map("classrooms")
 }
 
 model ClassroomMember {
-  id          String   @id @default(uuid())
-  classroomId String   @map("classroom_id")
-  studentId   String   @map("student_id")
-  joinedAt    DateTime @default(now()) @map("joined_at")
+  id          String                @id @default(uuid())
+  classroomId String                @map("classroom_id")
+  studentId   String                @map("student_id")
+  status      ClassroomMemberStatus @default(ACTIVE)
+  role        String?               @default("student") // student, assistant, vb.
+  joinedAt    DateTime              @default(now()) @map("joined_at")
+  leftAt      DateTime?             @map("left_at")
 
   // Relations
   classroom Classroom @relation(fields: [classroomId], references: [id], onDelete: Cascade)
@@ -117,6 +129,49 @@ model ClassroomMember {
 
   @@unique([classroomId, studentId])
   @@map("classroom_members")
+}
+
+enum ClassroomMemberStatus {
+  ACTIVE
+  REMOVED
+  LEFT
+}
+
+// Classroom Invitation Model - Davet Sistemi
+model ClassroomInvitation {
+  id             String           @id @default(uuid())
+  classroomId    String           @map("classroom_id")
+  studentId      String           @map("student_id")
+  invitedBy      String           @map("invited_by") // Teacher userId
+  status         InvitationStatus @default(PENDING)
+  invitationType InvitationType   @map("invitation_type")
+  message        String?          @db.Text // Öğretmen mesajı (opsiyonel)
+  createdAt      DateTime         @default(now()) @map("created_at")
+  respondedAt    DateTime?        @map("responded_at")
+  expiresAt      DateTime?        @map("expires_at") // Davet sona erme tarihi
+
+  // Relations
+  classroom Classroom @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  student   User      @relation("InvitationReceiver", fields: [studentId], references: [id], onDelete: Cascade)
+  inviter   User      @relation("InvitationSender", fields: [invitedBy], references: [id], onDelete: Cascade)
+
+  @@unique([classroomId, studentId, status]) // Aynı classroom için aynı öğrenciye birden fazla PENDING davet olamaz
+  @@index([studentId, status])
+  @@index([classroomId, status])
+  @@map("classroom_invitations")
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  CANCELLED
+  EXPIRED
+}
+
+enum InvitationType {
+  DIRECT // Öğretmen direkt davet etti
+  CODE_REQUEST // Öğrenci kod ile katılım istedi
 }
 
 // ========================================
@@ -164,18 +219,37 @@ model Question {
   difficulty   Difficulty   @default(MEDIUM)
   points       Int          @default(1)
   explanation  String?      @db.Text
-  createdBy    String       @map("created_by")
-  isPublic     Boolean      @default(false) @map("is_public")
-  createdAt    DateTime     @default(now()) @map("created_at")
-  updatedAt    DateTime     @updatedAt @map("updated_at")
+  imageUrl     String?      @map("image_url")
+
+  // Basit konu bilgisi (öğretmen yazacak)
+  subject String? // Ders adı (Matematik, Türkçe, vb.)
+  topic   String? // Konu adı (Toplama İşlemi, vb.)
+  grade   String? // Sınıf (4. Sınıf, 5. Sınıf, vb.)
+  tags    String[] @default([]) // Arama için etiketler
+
+  createdBy String  @map("created_by")
+  isPublic  Boolean @default(false) @map("is_public")
+
+  // İstatistikler (Pratik çalışma için)
+  usageCount   Int    @default(0) @map("usage_count") // Kaç kere kullanıldı
+  correctRate  Float? @map("correct_rate") // Doğru cevap oranı (0-100)
+  avgTimeSpent Int?   @map("avg_time_spent") // Ortalama çözüm süresi (saniye)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
-  topic         Topic?             @relation(fields: [topicId], references: [id], onDelete: SetNull)
-  creator       User               @relation(fields: [createdBy], references: [id])
-  options       QuestionOption[]
-  testQuestions TestQuestion[]
-  studentAnswers StudentAnswer[]
+  topicRef        Topic?           @relation(fields: [topicId], references: [id], onDelete: SetNull)
+  creator         User             @relation(fields: [createdBy], references: [id])
+  options         QuestionOption[]
+  testQuestions   TestQuestion[]
+  studentAnswers  StudentAnswer[]
+  practiceAnswers PracticeAnswer[]
 
+  @@index([subject])
+  @@index([topic])
+  @@index([createdBy])
+  @@index([isPublic])
   @@map("questions")
 }
 
@@ -199,8 +273,9 @@ model QuestionOption {
   orderIndex Int     @map("order_index")
 
   // Relations
-  question       Question        @relation(fields: [questionId], references: [id], onDelete: Cascade)
-  studentAnswers StudentAnswer[]
+  question        Question         @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  studentAnswers  StudentAnswer[]
+  practiceAnswers PracticeAnswer[]
 
   @@map("question_options")
 }
@@ -210,21 +285,24 @@ model QuestionOption {
 // ========================================
 
 model Test {
-  id              String    @id @default(uuid())
-  title           String
-  description     String?   @db.Text
-  teacherId       String    @map("teacher_id")
-  classroomId     String?   @map("classroom_id")
-  durationMinutes Int?      @map("duration_minutes")
-  totalPoints     Int       @default(0) @map("total_points")
-  passingScore    Int?      @map("passing_score")
-  isPublished     Boolean   @default(false) @map("is_published")
-  showResults     Boolean   @default(true) @map("show_results")
-  shuffleQuestions Boolean  @default(false) @map("shuffle_questions")
-  startDate       DateTime? @map("start_date")
-  endDate         DateTime? @map("end_date")
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
+  id               String    @id @default(uuid())
+  title            String
+  description      String?   @db.Text
+  subject          String? // Ders adı (Matematik, Türkçe, vb.)
+  topic            String? // Konu adı (Öğretmen yazacak)
+  grade            String? // Sınıf seviyesi (opsiyonel)
+  teacherId        String    @map("teacher_id")
+  classroomId      String?   @map("classroom_id")
+  durationMinutes  Int?      @map("duration_minutes")
+  totalPoints      Int       @default(0) @map("total_points")
+  passingScore     Int?      @map("passing_score")
+  isPublished      Boolean   @default(false) @map("is_published")
+  showResults      Boolean   @default(true) @map("show_results")
+  shuffleQuestions Boolean   @default(false) @map("shuffle_questions")
+  startDate        DateTime? @map("start_date")
+  endDate          DateTime? @map("end_date")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
 
   // Relations
   teacher       User           @relation(fields: [teacherId], references: [id])
@@ -255,16 +333,16 @@ model TestQuestion {
 // ========================================
 
 model StudentTest {
-  id          String           @id @default(uuid())
-  testId      String           @map("test_id")
-  studentId   String           @map("student_id")
+  id          String            @id @default(uuid())
+  testId      String            @map("test_id")
+  studentId   String            @map("student_id")
   status      StudentTestStatus @default(ASSIGNED)
   score       Float?
   percentage  Float?
-  isPassed    Boolean?         @map("is_passed")
-  startedAt   DateTime?        @map("started_at")
-  submittedAt DateTime?        @map("submitted_at")
-  createdAt   DateTime         @default(now()) @map("created_at")
+  isPassed    Boolean?          @map("is_passed")
+  startedAt   DateTime?         @map("started_at")
+  submittedAt DateTime?         @map("submitted_at")
+  createdAt   DateTime          @default(now()) @map("created_at")
 
   // Relations
   test    Test            @relation(fields: [testId], references: [id], onDelete: Cascade)
@@ -283,14 +361,14 @@ enum StudentTestStatus {
 }
 
 model StudentAnswer {
-  id               String    @id @default(uuid())
-  studentTestId    String    @map("student_test_id")
-  questionId       String    @map("question_id")
-  selectedOptionId String?   @map("selected_option_id")
-  answerText       String?   @map("answer_text") @db.Text
-  isCorrect        Boolean?  @map("is_correct")
-  pointsEarned     Float     @default(0) @map("points_earned")
-  answeredAt       DateTime  @default(now()) @map("answered_at")
+  id               String   @id @default(uuid())
+  studentTestId    String   @map("student_test_id")
+  questionId       String   @map("question_id")
+  selectedOptionId String?  @map("selected_option_id")
+  answerText       String?  @map("answer_text") @db.Text
+  isCorrect        Boolean? @map("is_correct")
+  pointsEarned     Float    @default(0) @map("points_earned")
+  answeredAt       DateTime @default(now()) @map("answered_at")
 
   // Relations
   studentTest    StudentTest     @relation(fields: [studentTestId], references: [id], onDelete: Cascade)
@@ -325,7 +403,138 @@ enum NotificationType {
   ANNOUNCEMENT
   REMINDER
   SYSTEM
+  CLASSROOM_INVITE_RECEIVED // Öğrenci: Öğretmen seni davet etti
+  CLASSROOM_JOIN_REQUEST // Öğretmen: Öğrenci katılmak istiyor
+  CLASSROOM_INVITE_ACCEPTED // Öğretmen: Öğrenci daveti kabul etti
+  CLASSROOM_INVITE_REJECTED // Öğretmen: Öğrenci daveti reddetti
+  CLASSROOM_JOIN_APPROVED // Öğrenci: Öğretmen katılım isteğini onayladı
+  CLASSROOM_JOIN_REJECTED // Öğrenci: Öğretmen katılım isteğini reddetti
+  CLASSROOM_MEMBER_REMOVED // Öğrenci: Classroom'dan çıkarıldın
 }
 
+// ========================================
+// AUDIT LOG MODEL (Denetim Kayıtları)
+// ========================================
 
+model AuditLog {
+  id         String     @id @default(uuid())
+  userId     String     @map("user_id") // Kim yaptı
+  action     AuditAction // Ne yaptı
+  entityType EntityType @map("entity_type") // Hangi tür kayıt
+  entityId   String?    @map("entity_id") // Hangi kayıt (opsiyonel)
+  entityName String?    @map("entity_name") // Kaydın adı/başlığı (UI için)
+  details    Json? // Ek detaylar (JSON)
+  ipAddress  String?    @map("ip_address")
+  userAgent  String?    @map("user_agent")
+  createdAt  DateTime   @default(now()) @map("created_at")
 
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([action])
+  @@index([entityType])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+enum AuditAction {
+  // Kullanıcı İşlemleri
+  USER_REGISTERED
+  USER_LOGIN
+  USER_LOGOUT
+  USER_APPROVED
+  USER_REJECTED
+  USER_DELETED
+  USER_UPDATED
+  USER_PASSWORD_CHANGED
+  
+  // İçerik İşlemleri
+  TEST_CREATED
+  TEST_UPDATED
+  TEST_DELETED
+  TEST_PUBLISHED
+  
+  QUESTION_CREATED
+  QUESTION_UPDATED
+  QUESTION_DELETED
+  QUESTION_ADDED_TO_POOL
+  QUESTION_REMOVED_FROM_POOL
+  
+  // Sınıf İşlemleri
+  CLASSROOM_CREATED
+  CLASSROOM_DELETED
+  CLASSROOM_MEMBER_ADDED
+  CLASSROOM_MEMBER_REMOVED
+}
+
+enum EntityType {
+  USER
+  STUDENT
+  TEACHER
+  TEST
+  QUESTION
+  CLASSROOM
+  PRACTICE_SESSION
+}
+
+// ========================================
+// PRACTICE SESSION MODELS (Soru Havuzu - Öğrenci Pratik Çalışması)
+// ========================================
+
+model PracticeSession {
+  id        String  @id @default(uuid())
+  studentId String  @map("student_id")
+  subject   String // Ders (Matematik, Türkçe, vb.)
+  topic     String? // Konu (Toplama İşlemi, vb.)
+  grade     String // Sınıf seviyesi
+
+  // Ayarlar
+  questionCount Int         @map("question_count") // Kaç soru istedi
+  difficulty    Difficulty? // Zorluk filtresi (opsiyonel)
+
+  // Sonuçlar
+  status         PracticeStatus @default(IN_PROGRESS)
+  score          Float? // Yüzdelik başarı (0-100)
+  correctCount   Int?           @map("correct_count")
+  wrongCount     Int?           @map("wrong_count")
+  totalQuestions Int            @map("total_questions")
+
+  startedAt   DateTime  @default(now()) @map("started_at")
+  completedAt DateTime? @map("completed_at")
+
+  // Relations
+  student User             @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  answers PracticeAnswer[]
+
+  @@index([studentId])
+  @@index([subject])
+  @@index([status])
+  @@map("practice_sessions")
+}
+
+enum PracticeStatus {
+  IN_PROGRESS
+  COMPLETED
+  ABANDONED
+}
+
+model PracticeAnswer {
+  id               String   @id @default(uuid())
+  sessionId        String   @map("session_id")
+  questionId       String   @map("question_id")
+  selectedOptionId String?  @map("selected_option_id")
+  isCorrect        Boolean  @map("is_correct")
+  timeSpent        Int?     @map("time_spent") // Saniye cinsinden
+  answeredAt       DateTime @default(now()) @map("answered_at")
+
+  // Relations
+  session        PracticeSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  question       Question        @relation(fields: [questionId], references: [id])
+  selectedOption QuestionOption? @relation(fields: [selectedOptionId], references: [id])
+
+  @@unique([sessionId, questionId])
+  @@index([sessionId])
+  @@index([questionId])
+  @@map("practice_answers")
+}

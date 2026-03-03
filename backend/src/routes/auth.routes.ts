@@ -10,11 +10,11 @@ import { authenticate } from '../middleware/auth.middleware';
 
 const router = Router();
 
-// Public routes
+// Public yönlendirmeler
 router.post('/register', register);
 router.post('/login', login);
 
-// Protected routes
+// Protected yönlendirmeler
 router.get('/me', authenticate, getMe);
 router.put('/profile', authenticate, updateProfile);
 router.put('/change-password', authenticate, changePassword);
