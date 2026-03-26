@@ -12,7 +12,7 @@ import RegisterScreen from '../screens/RegisterScreen';
 
 // Dashboard ekranları
 import StudentDashboard from '../screens/StudentDashboard';
-import TeacherDashboard from '../screens/TeacherDashboard';
+import TeacherTabNavigator from './TeacherTabNavigator';
 import AdminDashboard from '../screens/AdminDashboard';
 
 // ── Tip tanımları ──────────────────────────────────────
@@ -24,7 +24,7 @@ export type AuthStackParamList = {
 
 export type AppStackParamList = {
   StudentDashboard: undefined;
-  TeacherDashboard: undefined;
+  TeacherTabs: undefined;
   AdminDashboard: undefined;
 };
 
@@ -66,7 +66,7 @@ function AppNavigatorInner() {
         <AppStack.Screen name="StudentDashboard" component={StudentDashboard} />
       )}
       {user.role === 'TEACHER' && (
-        <AppStack.Screen name="TeacherDashboard" component={TeacherDashboard} />
+        <AppStack.Screen name="TeacherTabs" component={TeacherTabNavigator} />
       )}
       {user.role === 'ADMIN' && (
         <AppStack.Screen name="AdminDashboard" component={AdminDashboard} />
