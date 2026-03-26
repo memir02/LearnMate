@@ -35,6 +35,7 @@ model User {
   practiceSessions    PracticeSession[]
   notifications       Notification[]
   auditLogs           AuditLog[]
+  homeworks           Homework[]
 
   @@map("users")
 }
@@ -110,6 +111,7 @@ model Classroom {
   members     ClassroomMember[]
   invitations ClassroomInvitation[]
   tests       Test[]
+  homeworks   Homework[]
 
   @@map("classrooms")
 }
@@ -476,6 +478,37 @@ enum EntityType {
   QUESTION
   CLASSROOM
   PRACTICE_SESSION
+}
+
+// ========================================
+// HOMEWORK MODEL (Ödev - PDF/Fotoğraf)
+// ========================================
+
+model Homework {
+  id          String       @id @default(uuid())
+  title       String
+  description String?      @db.Text
+  fileUrl     String       @map("file_url")
+  fileType    HomeworkFileType @map("file_type")
+  publicId    String       @map("public_id") // Cloudinary public_id (silmek için)
+  teacherId   String       @map("teacher_id")
+  classroomId String       @map("classroom_id")
+  dueDate     DateTime?    @map("due_date")
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+
+  // Relations
+  teacher   User      @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  classroom Classroom @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+
+  @@index([classroomId])
+  @@index([teacherId])
+  @@map("homeworks")
+}
+
+enum HomeworkFileType {
+  PDF
+  IMAGE
 }
 
 // ========================================
