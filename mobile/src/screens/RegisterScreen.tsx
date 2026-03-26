@@ -9,15 +9,17 @@ import {
   Platform,
   ScrollView,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../navigation/AppNavigator';
+import { AuthStackParamList } from '../navigation/AppNavigator';
 import { Colors } from '../constants/colors';
+import { useAuth } from '../context/AuthContext';
 
 type RegisterScreenProps = {
-  navigation: NativeStackNavigationProp<RootStackParamList, 'Register'>;
+  navigation: NativeStackNavigationProp<AuthStackParamList, 'Register'>;
 };
 
 type Role = 'STUDENT' | 'TEACHER';
@@ -34,6 +36,7 @@ type FormErrors = {
 };
 
 export default function RegisterScreen({ navigation }: RegisterScreenProps) {
+  const { register } = useAuth();
   const [role, setRole] = useState<Role>('STUDENT');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -71,8 +74,20 @@ export default function RegisterScreen({ navigation }: RegisterScreenProps) {
     if (!validate()) return;
     setIsLoading(true);
     try {
-      // TODO: API entegrasyonu eklenecek
-      await new Promise((r) => setTimeout(r, 1000));
+      await register({
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        email: email.trim(),
+        password,
+        role,
+        ...(role === 'STUDENT' && grade ? { grade } : {}),
+      });
+      // Navigation AuthContext'teki user state değişince otomatik olur
+    } catch (error: any) {
+      const message =
+        error.response?.data?.message ||
+        'Sunucuya bağlanılamadı. IP adresini kontrol edin.';
+      Alert.alert('Kayıt Başarısız', message);
     } finally {
       setIsLoading(false);
     }

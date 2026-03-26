@@ -9,18 +9,21 @@ import {
   Platform,
   ScrollView,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../navigation/AppNavigator';
+import { AuthStackParamList } from '../navigation/AppNavigator';
 import { Colors } from '../constants/colors';
+import { useAuth } from '../context/AuthContext';
 
 type LoginScreenProps = {
-  navigation: NativeStackNavigationProp<RootStackParamList, 'Login'>;
+  navigation: NativeStackNavigationProp<AuthStackParamList, 'Login'>;
 };
 
 export default function LoginScreen({ navigation }: LoginScreenProps) {
+  const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
@@ -47,8 +50,13 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
     if (!validate()) return;
     setIsLoading(true);
     try {
-      // TODO: API entegrasyonu eklenecek
-      await new Promise((r) => setTimeout(r, 1000));
+      await login(email.trim(), password);
+      // Navigation AuthContext'teki user state değişince otomatik olur
+    } catch (error: any) {
+      const message =
+        error.response?.data?.message ||
+        'Sunucuya bağlanılamadı. IP adresini kontrol edin.';
+      Alert.alert('Giriş Başarısız', message);
     } finally {
       setIsLoading(false);
     }

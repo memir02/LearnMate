@@ -2,11 +2,11 @@ import { StyleSheet, Text, View, TouchableOpacity, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../navigation/AppNavigator';
+import { AuthStackParamList } from '../navigation/AppNavigator';
 import { Colors } from '../constants/colors';
 
 type WelcomeScreenProps = {
-  navigation: NativeStackNavigationProp<RootStackParamList, 'Welcome'>;
+  navigation: NativeStackNavigationProp<AuthStackParamList, 'Welcome'>;
 };
 
 export default function WelcomeScreen({ navigation }: WelcomeScreenProps) {
