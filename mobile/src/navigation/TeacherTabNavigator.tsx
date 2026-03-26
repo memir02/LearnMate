@@ -2,7 +2,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Text } from 'react-native';
 import { Colors } from '../constants/colors';
 
-import ClassroomsScreen from '../screens/teacher/ClassroomsScreen';
+import ClassroomsStackNavigator from './ClassroomsStackNavigator';
 import QuestionsScreen from '../screens/teacher/QuestionsScreen';
 import TestsScreen from '../screens/teacher/TestsScreen';
 import HomeworkScreen from '../screens/teacher/HomeworkScreen';
@@ -50,7 +50,7 @@ export default function TeacherTabNavigator() {
     >
       <Tab.Screen
         name="Classrooms"
-        component={ClassroomsScreen}
+        component={ClassroomsStackNavigator}
         options={{
           tabBarLabel: 'Sınıflar',
           tabBarIcon: ({ focused }) => <TabIcon emoji="🏫" focused={focused} />,

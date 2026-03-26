@@ -43,4 +43,23 @@ export const authApi = {
   getMe: () => api.get('/auth/me'),
 };
 
+// ── Classrooms ────────────────────────────────────────
+export const classroomApi = {
+  getAll: () => api.get('/classrooms'),
+
+  getById: (id: string) => api.get(`/classrooms/${id}`),
+
+  create: (data: {
+    name: string;
+    description?: string;
+    subject?: string;
+    grade?: string;
+  }) => api.post('/classrooms', data),
+
+  delete: (id: string) => api.delete(`/classrooms/${id}`),
+
+  removeMember: (classroomId: string, studentId: string) =>
+    api.delete(`/classrooms/${classroomId}/members/${studentId}`),
+};
+
 export default api;
