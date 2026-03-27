@@ -52,10 +52,16 @@ const DIFFICULTIES: { value: string; label: string }[] = [
 
 const EMPTY_FILTERS: Filters = { subject: '', topic: '', grade: '', difficulty: '' };
 
+const PAGE_LIMIT = 20;
+
 export default function QuestionsScreen({ navigation }: Props) {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const [searchText, setSearchText] = useState('');
@@ -64,18 +70,26 @@ export default function QuestionsScreen({ navigation }: Props) {
     filters.subject, filters.grade, filters.difficulty, filters.topic,
   ].filter(Boolean).length;
 
+  const buildParams = (f: Filters, page: number) => {
+    const params: Record<string, string | number> = { page, limit: PAGE_LIMIT };
+    if (f.subject) params.subject = f.subject;
+    if (f.grade) params.grade = `${f.grade}. Sınıf`;
+    if (f.difficulty) params.difficulty = f.difficulty;
+    if (f.topic) params.topic = f.topic;
+    return params;
+  };
+
+  // İlk yükleme veya filtre değişimi — sayfa 1'den başlar, listeyi sıfırlar
   const fetchQuestions = useCallback(async (refresh = false, currentFilters = filters) => {
     if (refresh) setIsRefreshing(true);
-    else if (!refresh) setIsLoading(true);
+    else setIsLoading(true);
     try {
-      const params: Record<string, string> = {};
-      if (currentFilters.subject) params.subject = currentFilters.subject;
-      if (currentFilters.grade) params.grade = `${currentFilters.grade}. Sınıf`;
-      if (currentFilters.difficulty) params.difficulty = currentFilters.difficulty;
-      if (currentFilters.topic) params.topic = currentFilters.topic;
-
-      const res = await questionApi.getMyQuestions(params);
-      setQuestions(res.data.data?.questions || []);
+      const res = await questionApi.getMyQuestions(buildParams(currentFilters, 1));
+      const data = res.data.data;
+      setQuestions(data?.questions || []);
+      setCurrentPage(1);
+      setTotalPages(data?.pagination?.totalPages ?? 1);
+      setTotal(data?.pagination?.total ?? 0);
     } catch {
       Alert.alert('Hata', 'Sorular yüklenemedi.');
     } finally {
@@ -84,9 +98,26 @@ export default function QuestionsScreen({ navigation }: Props) {
     }
   }, [filters]);
 
+  // Sonraki sayfayı yükle ve mevcut listeye ekle
+  const loadMore = async () => {
+    if (isLoadingMore || currentPage >= totalPages) return;
+    const nextPage = currentPage + 1;
+    setIsLoadingMore(true);
+    try {
+      const res = await questionApi.getMyQuestions(buildParams(filters, nextPage));
+      const newQuestions = res.data.data?.questions || [];
+      setQuestions((prev) => [...prev, ...newQuestions]);
+      setCurrentPage(nextPage);
+    } catch {
+      Alert.alert('Hata', 'Daha fazla soru yüklenemedi.');
+    } finally {
+      setIsLoadingMore(false);
+    }
+  };
+
   useFocusEffect(useCallback(() => { fetchQuestions(); }, []));
 
-  // Filtreler değişince otomatik yükle
+  // Filtreler değişince sayfa 1'den yeniden yükle
   useEffect(() => {
     fetchQuestions(false, filters);
   }, [filters]);
@@ -239,7 +270,7 @@ export default function QuestionsScreen({ navigation }: Props) {
           {/* Filtre özeti ve temizle */}
           {activeFilterCount > 0 && (
             <View style={styles.filterFooter}>
-              <Text style={styles.filterCount}>{questions.length} sonuç bulundu</Text>
+              <Text style={styles.filterCount}>{total} sonuç bulundu</Text>
               <TouchableOpacity onPress={clearFilters} style={styles.clearBtn}>
                 <Text style={styles.clearBtnText}>✕ Temizle</Text>
               </TouchableOpacity>
@@ -259,6 +290,7 @@ export default function QuestionsScreen({ navigation }: Props) {
           <Text style={styles.emptyTitle}>
             {activeFilterCount > 0 ? 'Sonuç bulunamadı' : 'Henüz soru yok'}
           </Text>
+
           <Text style={styles.emptySubtitle}>
             {activeFilterCount > 0
               ? 'Farklı filtre kriterleri deneyin'
@@ -281,6 +313,22 @@ export default function QuestionsScreen({ navigation }: Props) {
               onRefresh={() => fetchQuestions(true)}
               colors={[Colors.primary]}
             />
+          }
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.3}
+          ListFooterComponent={
+            isLoadingMore ? (
+              <View style={styles.loadMoreIndicator}>
+                <ActivityIndicator color={Colors.primary} size="small" />
+                <Text style={styles.loadMoreText}>Daha fazla yükleniyor...</Text>
+              </View>
+            ) : currentPage < totalPages ? (
+              <TouchableOpacity style={styles.loadMoreBtn} onPress={loadMore}>
+                <Text style={styles.loadMoreBtnText}>Daha Fazla Göster ({total - questions.length} soru kaldı)</Text>
+              </TouchableOpacity>
+            ) : questions.length > 0 ? (
+              <Text style={styles.endText}>Tüm {total} soru gösteriliyor</Text>
+            ) : null
           }
           renderItem={({ item, index }) => (
             <View style={styles.card}>
@@ -426,7 +474,7 @@ const styles = StyleSheet.create({
   clearBtnText: { fontSize: 12, fontWeight: '700', color: '#dc2626' },
 
   // Liste
-  list: { padding: 16, gap: 12 },
+  list: { padding: 16, gap: 12, paddingBottom: 120 },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10, paddingHorizontal: 40 },
   emptyIcon: { fontSize: 52 },
   emptyTitle: { fontSize: 18, fontWeight: '700', color: Colors.textPrimary },
@@ -483,4 +531,21 @@ const styles = StyleSheet.create({
     borderColor: '#fecaca', backgroundColor: '#fef2f2',
   },
   deleteBtnText: { fontSize: 16 },
+
+  // Sayfalama
+  loadMoreIndicator: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 8, paddingVertical: 16,
+  },
+  loadMoreText: { fontSize: 13, color: Colors.textSecondary },
+  loadMoreBtn: {
+    marginHorizontal: 16, marginBottom: 16, paddingVertical: 12,
+    borderRadius: 12, borderWidth: 1.5, borderColor: Colors.primary,
+    alignItems: 'center', backgroundColor: Colors.primaryLight,
+  },
+  loadMoreBtnText: { fontSize: 13, fontWeight: '700', color: Colors.primary },
+  endText: {
+    textAlign: 'center', fontSize: 12, color: Colors.textMuted,
+    paddingVertical: 16,
+  },
 });
