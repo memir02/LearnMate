@@ -3,7 +3,7 @@ import { Text } from 'react-native';
 import { Colors } from '../constants/colors';
 
 import ClassroomsStackNavigator from './ClassroomsStackNavigator';
-import QuestionsScreen from '../screens/teacher/QuestionsScreen';
+import QuestionsStackNavigator from './QuestionsStackNavigator';
 import TestsScreen from '../screens/teacher/TestsScreen';
 import HomeworkScreen from '../screens/teacher/HomeworkScreen';
 import TeacherProfileScreen from '../screens/teacher/TeacherProfileScreen';
@@ -58,7 +58,7 @@ export default function TeacherTabNavigator() {
       />
       <Tab.Screen
         name="Questions"
-        component={QuestionsScreen}
+        component={QuestionsStackNavigator}
         options={{
           tabBarLabel: 'Sorular',
           tabBarIcon: ({ focused }) => <TabIcon emoji="❓" focused={focused} />,

@@ -62,4 +62,44 @@ export const classroomApi = {
     api.delete(`/classrooms/${classroomId}/members/${studentId}`),
 };
 
+// ── Upload ────────────────────────────────────────────
+export const uploadApi = {
+  image: async (uri: string) => {
+    const formData = new FormData();
+    const filename = uri.split('/').pop() ?? 'image.jpg';
+    const match = /\.(\w+)$/.exec(filename);
+    const type = match ? `image/${match[1]}` : 'image/jpeg';
+    formData.append('image', { uri, name: filename, type } as any);
+    return api.post('/upload/image', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+};
+
+// ── Questions ─────────────────────────────────────────
+export const questionApi = {
+  getMyQuestions: (params?: { subject?: string; grade?: string }) =>
+    api.get('/questions/my-questions', { params }),
+
+  getById: (id: string) => api.get(`/questions/${id}`),
+
+  create: (data: {
+    questionText: string;
+    subject?: string;
+    topic?: string;
+    grade?: string;
+    difficulty?: 'EASY' | 'MEDIUM' | 'HARD';
+    imageUrl?: string;
+    isPublic?: boolean;
+    options: { optionText: string; isCorrect: boolean; orderIndex: number }[];
+  }) => api.post('/questions', data),
+
+  update: (id: string, data: any) => api.put(`/questions/${id}`, data),
+
+  delete: (id: string) => api.delete(`/questions/${id}`),
+
+  togglePublic: (id: string, isPublic: boolean) =>
+    api.patch(`/questions/${id}/toggle-public`, { isPublic }),
+};
+
 export default api;

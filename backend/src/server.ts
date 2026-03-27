@@ -79,6 +79,7 @@ import studentTestRoutes from './routes/student-test.routes';
 import practiceRoutes from './routes/practice.routes';
 import auditLogRoutes from './routes/auditLog.routes';
 import homeworkRoutes from './routes/homework.routes';
+import uploadRoutes from './routes/upload.routes';
 
 // Health Check
 app.get('/health', (req, res) => {
@@ -100,6 +101,7 @@ app.use('/api/student-tests', studentTestRoutes);
 app.use('/api/practice', practiceRoutes);
 app.use('/api/audit-logs', auditLogRoutes);
 app.use('/api/homework', homeworkRoutes);
+app.use('/api/upload', uploadRoutes);
 // app.use('/api/subjects', subjectRoutes);
 // app.use('/api/notifications', notificationRoutes);
 
