@@ -139,7 +139,7 @@ export const getMyQuestions = async (req: AuthRequest, res: Response) => {
             orderBy: { orderIndex: 'asc' },
           },
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
         skip,
         take,
       }),

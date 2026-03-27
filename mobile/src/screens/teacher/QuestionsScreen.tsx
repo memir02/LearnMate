@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   StyleSheet, Text, View, TouchableOpacity, FlatList,
   ActivityIndicator, Alert, RefreshControl, Image,
@@ -52,7 +52,7 @@ const DIFFICULTIES: { value: string; label: string }[] = [
 
 const EMPTY_FILTERS: Filters = { subject: '', topic: '', grade: '', difficulty: '' };
 
-const PAGE_LIMIT = 20;
+const PAGE_LIMIT = 40; // Yeterince büyük tutarak çoğu durumda tek sayfada yüklüyoruz
 
 export default function QuestionsScreen({ navigation }: Props) {
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -70,6 +70,21 @@ export default function QuestionsScreen({ navigation }: Props) {
     filters.subject, filters.grade, filters.difficulty, filters.topic,
   ].filter(Boolean).length;
 
+  // Sayfalama değerlerini ref'te tut — loadMore her zaman güncel değeri okusun
+  const currentPageRef = useRef(1);
+  const totalPagesRef = useRef(1);
+  const filtersRef = useRef(filters);
+  filtersRef.current = filters;
+
+  // loadMore çift tetiklenmesin
+  const isLoadingMoreRef = useRef(false);
+
+  // fetchPage1'in çalışıp çalışmadığını takip et — loadMore buna paralel başlamasın
+  const isFetchingPage1Ref = useRef(false);
+
+  // İlk render'ı takip et — useEffect mount'ta çalışmasın
+  const isFirstRender = useRef(true);
+
   const buildParams = (f: Filters, page: number) => {
     const params: Record<string, string | number> = { page, limit: PAGE_LIMIT };
     if (f.subject) params.subject = f.subject;
@@ -79,13 +94,17 @@ export default function QuestionsScreen({ navigation }: Props) {
     return params;
   };
 
-  // İlk yükleme veya filtre değişimi — sayfa 1'den başlar, listeyi sıfırlar
-  const fetchQuestions = useCallback(async (refresh = false, currentFilters = filters) => {
+  // Sayfa 1'den yükle, listeyi sıfırla
+  const fetchPage1 = useCallback(async (currentFilters: Filters, refresh = false) => {
+    if (isFetchingPage1Ref.current) return; // Zaten çalışıyorsa atla
+    isFetchingPage1Ref.current = true;
     if (refresh) setIsRefreshing(true);
     else setIsLoading(true);
     try {
       const res = await questionApi.getMyQuestions(buildParams(currentFilters, 1));
       const data = res.data.data;
+      currentPageRef.current = 1;
+      totalPagesRef.current = data?.pagination?.totalPages ?? 1;
       setQuestions(data?.questions || []);
       setCurrentPage(1);
       setTotalPages(data?.pagination?.totalPages ?? 1);
@@ -93,39 +112,62 @@ export default function QuestionsScreen({ navigation }: Props) {
     } catch {
       Alert.alert('Hata', 'Sorular yüklenemedi.');
     } finally {
+      isFetchingPage1Ref.current = false;
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, [filters]);
+  }, []);
 
   // Sonraki sayfayı yükle ve mevcut listeye ekle
-  const loadMore = async () => {
-    if (isLoadingMore || currentPage >= totalPages) return;
-    const nextPage = currentPage + 1;
+  const loadMore = useCallback(async () => {
+    if (isLoadingMoreRef.current || isFetchingPage1Ref.current) return;
+    if (currentPageRef.current >= totalPagesRef.current) return;
+
+    isLoadingMoreRef.current = true;
     setIsLoadingMore(true);
+    const nextPage = currentPageRef.current + 1;
     try {
-      const res = await questionApi.getMyQuestions(buildParams(filters, nextPage));
+      const res = await questionApi.getMyQuestions(buildParams(filtersRef.current, nextPage));
       const newQuestions = res.data.data?.questions || [];
-      setQuestions((prev) => [...prev, ...newQuestions]);
+      currentPageRef.current = nextPage;
+      setQuestions((prev) => {
+        // Tekrarlanan ID'leri önle (non-deterministik sıralama güvenliği)
+        const existingIds = new Set(prev.map((q) => q.id));
+        const unique = newQuestions.filter((q: Question) => !existingIds.has(q.id));
+        return [...prev, ...unique];
+      });
       setCurrentPage(nextPage);
     } catch {
       Alert.alert('Hata', 'Daha fazla soru yüklenemedi.');
     } finally {
+      isLoadingMoreRef.current = false;
       setIsLoadingMore(false);
     }
-  };
+  }, []);
 
-  useFocusEffect(useCallback(() => { fetchQuestions(); }, []));
+  // Ekran odaklandığında (ilk açılış + geri dönüş): tek seferde çalışır
+  useFocusEffect(
+    useCallback(() => {
+      fetchPage1(filtersRef.current);
+    }, [fetchPage1])
+  );
 
-  // Filtreler değişince sayfa 1'den yeniden yükle
+  // Filtreler değişince yeniden yükle — mount'ta ÇALIŞMAZ (çift fetch önlenir)
   useEffect(() => {
-    fetchQuestions(false, filters);
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    fetchPage1(filters);
   }, [filters]);
 
-  // Arama için debounce
+  // Arama için debounce — değer değişmediyse yeni nesne oluşturma
   useEffect(() => {
     const timer = setTimeout(() => {
-      setFilters((prev) => ({ ...prev, topic: searchText }));
+      setFilters((prev) => {
+        if (prev.topic === searchText) return prev; // Aynıysa referansı koru
+        return { ...prev, topic: searchText };
+      });
     }, 400);
     return () => clearTimeout(timer);
   }, [searchText]);
@@ -181,7 +223,15 @@ export default function QuestionsScreen({ navigation }: Props) {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Sorularım</Text>
+        <View>
+          <Text style={styles.headerTitle}>Sorularım</Text>
+          {total > 0 && (
+            <Text style={styles.headerCount}>
+              {questions.length}/{total} yüklendi
+              {questions.length !== new Set(questions.map(q => q.id)).size ? ' ⚠️ duplikat' : ''}
+            </Text>
+          )}
+        </View>
         <View style={styles.headerRight}>
           <TouchableOpacity style={styles.filterToggle} onPress={toggleFilters}>
             <Text style={styles.filterToggleText}>🔍 Filtrele</Text>
@@ -305,12 +355,16 @@ export default function QuestionsScreen({ navigation }: Props) {
       ) : (
         <FlatList
           data={questions}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item, index) => item.id ?? `fallback-${index}`}
           contentContainerStyle={styles.list}
+          removeClippedSubviews={false}
+          initialNumToRender={50}
+          maxToRenderPerBatch={50}
+          windowSize={10}
           refreshControl={
             <RefreshControl
               refreshing={isRefreshing}
-              onRefresh={() => fetchQuestions(true)}
+              onRefresh={() => fetchPage1(filtersRef.current, true)}
               colors={[Colors.primary]}
             />
           }
@@ -415,6 +469,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.white, borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
   headerTitle: { fontSize: 20, fontWeight: '800', color: Colors.textPrimary },
+  headerCount: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
   headerRight: { flexDirection: 'row', gap: 8, alignItems: 'center' },
   filterToggle: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
