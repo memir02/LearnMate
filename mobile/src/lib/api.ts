@@ -78,7 +78,7 @@ export const uploadApi = {
 
 // ── Questions ─────────────────────────────────────────
 export const questionApi = {
-  getMyQuestions: (params?: { subject?: string; grade?: string }) =>
+  getMyQuestions: (params?: { subject?: string; grade?: string; topic?: string; difficulty?: string }) =>
     api.get('/questions/my-questions', { params }),
 
   getById: (id: string) => api.get(`/questions/${id}`),
