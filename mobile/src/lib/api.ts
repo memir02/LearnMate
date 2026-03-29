@@ -102,4 +102,33 @@ export const questionApi = {
     api.patch(`/questions/${id}/toggle-public`, { isPublic }),
 };
 
+// ── Tests ─────────────────────────────────────────────
+export const testApi = {
+  getMyTests: (params?: { page?: number; limit?: number; subject?: string; topic?: string }) =>
+    api.get('/tests/my-tests', { params }),
+
+  getById: (id: string) => api.get(`/tests/${id}`),
+
+  create: (data: {
+    title: string;
+    description?: string;
+    subject?: string;
+    topic?: string;
+    grade?: string;
+    classroomId?: string;
+    durationMinutes?: number;
+    passingScore?: number;
+    showResults?: boolean;
+    shuffleQuestions?: boolean;
+    startDate?: string;
+    endDate?: string;
+    questionIds: string[];
+  }) => api.post('/tests', data),
+
+  publish: (id: string, isPublished: boolean) =>
+    api.patch(`/tests/${id}/publish`, { isPublished }),
+
+  delete: (id: string) => api.delete(`/tests/${id}`),
+};
+
 export default api;

@@ -4,7 +4,7 @@ import { Colors } from '../constants/colors';
 
 import ClassroomsStackNavigator from './ClassroomsStackNavigator';
 import QuestionsStackNavigator from './QuestionsStackNavigator';
-import TestsScreen from '../screens/teacher/TestsScreen';
+import TestsStackNavigator from './TestsStackNavigator';
 import HomeworkScreen from '../screens/teacher/HomeworkScreen';
 import TeacherProfileScreen from '../screens/teacher/TeacherProfileScreen';
 
@@ -66,7 +66,7 @@ export default function TeacherTabNavigator() {
       />
       <Tab.Screen
         name="Tests"
-        component={TestsScreen}
+        component={TestsStackNavigator}
         options={{
           tabBarLabel: 'Testler',
           tabBarIcon: ({ focused }) => <TabIcon emoji="📝" focused={focused} />,
