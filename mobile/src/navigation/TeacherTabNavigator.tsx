@@ -5,7 +5,7 @@ import { Colors } from '../constants/colors';
 import ClassroomsStackNavigator from './ClassroomsStackNavigator';
 import QuestionsStackNavigator from './QuestionsStackNavigator';
 import TestsStackNavigator from './TestsStackNavigator';
-import HomeworkScreen from '../screens/teacher/HomeworkScreen';
+import HomeworkStack from '../screens/teacher/HomeworkScreen';
 import TeacherProfileScreen from '../screens/teacher/TeacherProfileScreen';
 
 export type TeacherTabParamList = {
@@ -74,7 +74,7 @@ export default function TeacherTabNavigator() {
       />
       <Tab.Screen
         name="Homework"
-        component={HomeworkScreen}
+        component={HomeworkStack}
         options={{
           tabBarLabel: 'Ödevler',
           tabBarIcon: ({ focused }) => <TabIcon emoji="📄" focused={focused} />,

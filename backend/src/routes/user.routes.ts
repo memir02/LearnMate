@@ -5,7 +5,9 @@ import {
   updateUser,
   deleteUser,
   getUserStats,
-  searchStudents
+  searchStudents,
+  updateMyProfile,
+  changeMyPassword,
 } from '../controllers/user.controller';
 import { authenticate, authorize, checkOwnerOrAdmin } from '../middleware/auth.middleware';
 
@@ -13,6 +15,10 @@ const router = Router();
 
 // Tüm yönlendirmeler kimlik doğrulama gerektirir
 router.use(authenticate);
+
+// Kendi profilini güncelle (Teacher / Student)
+router.put('/me', updateMyProfile);
+router.put('/me/password', changeMyPassword);
 
 // Admin sadece yönlendirmeler (tüm kullanıcıları getirir)
 router.get('/', authorize('ADMIN'), getAllUsers);

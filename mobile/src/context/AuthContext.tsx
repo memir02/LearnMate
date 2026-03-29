@@ -8,8 +8,8 @@ export interface AuthUser {
   id: string;
   email: string;
   role: UserRole;
-  student?: { firstName: string; lastName: string; grade?: string | null } | null;
-  teacher?: { firstName: string; lastName: string } | null;
+  student?: { firstName: string; lastName: string; grade?: string | null; phone?: string | null } | null;
+  teacher?: { firstName: string; lastName: string; phone?: string | null } | null;
 }
 
 interface AuthContextType {
@@ -19,6 +19,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   register: (data: RegisterData) => Promise<void>;
   logout: () => Promise<void>;
+  setUser: (user: AuthUser) => void;
 }
 
 interface RegisterData {
@@ -80,8 +81,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   };
 
+  const updateUser = (updatedUser: AuthUser) => {
+    setUser(updatedUser);
+    saveUser(updatedUser);
+  };
+
   return (
-    <AuthContext.Provider value={{ user, token, isLoading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, token, isLoading, login, register, logout, setUser: updateUser }}>
       {children}
     </AuthContext.Provider>
   );

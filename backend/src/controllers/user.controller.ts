@@ -292,6 +292,95 @@ export const getUserStats = async (req: AuthRequest, res: Response) => {
   }
 };
 
+// Kendi profilini güncelle (Teacher / Student)
+export const updateMyProfile = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    const role = req.user?.role;
+    const { firstName, lastName, phone } = req.body;
+
+    if (role === 'TEACHER') {
+      await prisma.teacher.update({
+        where: { userId },
+        data: {
+          ...(firstName && { firstName }),
+          ...(lastName && { lastName }),
+          ...(phone !== undefined && { phone }),
+        },
+      });
+    } else if (role === 'STUDENT') {
+      await prisma.student.update({
+        where: { userId },
+        data: {
+          ...(firstName && { firstName }),
+          ...(lastName && { lastName }),
+          ...(phone !== undefined && { phone }),
+        },
+      });
+    }
+
+    const updatedUser = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { teacher: true, student: true },
+    });
+
+    const { passwordHash, ...userWithoutPassword } = updatedUser!;
+
+    return res.status(200).json({
+      status: 'success',
+      message: 'Profil başarıyla güncellendi.',
+      data: userWithoutPassword,
+    });
+  } catch (error) {
+    console.error('Update my profile error:', error);
+    return res.status(500).json({
+      status: 'error',
+      message: 'Profil güncellenirken bir hata oluştu.',
+    });
+  }
+};
+
+// Kendi şifresini değiştir
+export const changeMyPassword = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Mevcut ve yeni şifre zorunludur.',
+      });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Yeni şifre en az 6 karakter olmalıdır.',
+      });
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      return res.status(404).json({ status: 'error', message: 'Kullanıcı bulunamadı.' });
+    }
+
+    const bcrypt = await import('bcryptjs');
+    const isMatch = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!isMatch) {
+      return res.status(400).json({ status: 'error', message: 'Mevcut şifre yanlış.' });
+    }
+
+    const hashed = await bcrypt.hash(newPassword, 12);
+    await prisma.user.update({ where: { id: userId }, data: { passwordHash: hashed } });
+
+    return res.status(200).json({ status: 'success', message: 'Şifre başarıyla değiştirildi.' });
+  } catch (error) {
+    console.error('Change password error:', error);
+    return res.status(500).json({ status: 'error', message: 'Şifre değiştirilirken bir hata oluştu.' });
+  }
+};
+
 // Öğrenci ara (Teacher)
 export const searchStudents = async (req: AuthRequest, res: Response) => {
   try {

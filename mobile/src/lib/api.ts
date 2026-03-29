@@ -131,4 +131,44 @@ export const testApi = {
   delete: (id: string) => api.delete(`/tests/${id}`),
 };
 
+// ── User / Profile ───────────────────────────────────
+export const userApi = {
+  updateMyProfile: (data: { firstName?: string; lastName?: string; phone?: string }) =>
+    api.put('/users/me', data),
+
+  changeMyPassword: (data: { currentPassword: string; newPassword: string }) =>
+    api.put('/users/me/password', data),
+};
+
+// ── Homework ──────────────────────────────────────────
+export const homeworkApi = {
+  getMyHomeworks: () => api.get('/homework/my'),
+
+  create: async (data: {
+    title: string;
+    description?: string;
+    classroomId: string;
+    dueDate?: string;
+    fileUri: string;
+    fileName: string;
+    fileMimeType: string;
+  }) => {
+    const formData = new FormData();
+    formData.append('title', data.title);
+    if (data.description) formData.append('description', data.description);
+    formData.append('classroomId', data.classroomId);
+    if (data.dueDate) formData.append('dueDate', data.dueDate);
+    formData.append('file', {
+      uri: data.fileUri,
+      name: data.fileName,
+      type: data.fileMimeType,
+    } as any);
+    return api.post('/homework', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+
+  delete: (id: string) => api.delete(`/homework/${id}`),
+};
+
 export default api;
