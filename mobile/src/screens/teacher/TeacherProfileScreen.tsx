@@ -280,7 +280,7 @@ export default function TeacherProfileScreen() {
             >
               {isChangingPw
                 ? <ActivityIndicator color={Colors.white} />
-                : <Text style={styles.saveBtnText}>🔒 Şifreyi Değiştir</Text>
+                : <Text style={styles.saveBtnText}>Şifreyi Değiştir</Text>
               }
             </TouchableOpacity>
           </View>
@@ -288,7 +288,7 @@ export default function TeacherProfileScreen() {
 
         {/* Çıkış */}
         <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
-          <Text style={styles.logoutText}>🚪 Çıkış Yap</Text>
+          <Text style={styles.logoutText}>Çıkış Yap</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>

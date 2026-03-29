@@ -129,6 +129,8 @@ export const testApi = {
     api.patch(`/tests/${id}/publish`, { isPublished }),
 
   delete: (id: string) => api.delete(`/tests/${id}`),
+
+  getTeacherStats: () => api.get('/tests/statistics'),
 };
 
 // ── User / Profile ───────────────────────────────────

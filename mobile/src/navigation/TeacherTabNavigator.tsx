@@ -6,6 +6,7 @@ import ClassroomsStackNavigator from './ClassroomsStackNavigator';
 import QuestionsStackNavigator from './QuestionsStackNavigator';
 import TestsStackNavigator from './TestsStackNavigator';
 import HomeworkStack from '../screens/teacher/HomeworkScreen';
+import StatisticsScreen from '../screens/teacher/StatisticsScreen';
 import TeacherProfileScreen from '../screens/teacher/TeacherProfileScreen';
 
 export type TeacherTabParamList = {
@@ -13,6 +14,7 @@ export type TeacherTabParamList = {
   Questions: undefined;
   Tests: undefined;
   Homework: undefined;
+  Statistics: undefined;
   Profile: undefined;
 };
 
@@ -78,6 +80,14 @@ export default function TeacherTabNavigator() {
         options={{
           tabBarLabel: 'Ödevler',
           tabBarIcon: ({ focused }) => <TabIcon emoji="📄" focused={focused} />,
+        }}
+      />
+      <Tab.Screen
+        name="Statistics"
+        component={StatisticsScreen}
+        options={{
+          tabBarLabel: 'İstatistik',
+          tabBarIcon: ({ focused }) => <TabIcon emoji="📊" focused={focused} />,
         }}
       />
       <Tab.Screen
