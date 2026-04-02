@@ -12,12 +12,18 @@ const storage = new CloudinaryStorage({
   cloudinary: cloudinary.v2,
   params: async (req, file) => {
     const isPdf = file.mimetype === 'application/pdf';
-    return {
-      folder: 'learnmate/homeworks',
-      resource_type: isPdf ? 'raw' : 'image',
-      allowed_formats: ['jpg', 'jpeg', 'png', 'pdf'],
-      transformation: isPdf ? undefined : [{ quality: 'auto', fetch_format: 'auto' }],
-    };
+    // 'allowed_formats' sadece image resource_type için geçerli, raw'da kullanılmaz
+    return isPdf
+      ? {
+          folder: 'learnmate/homeworks',
+          resource_type: 'raw',
+        }
+      : {
+          folder: 'learnmate/homeworks',
+          resource_type: 'image',
+          allowed_formats: ['jpg', 'jpeg', 'png'],
+          transformation: [{ quality: 'auto', fetch_format: 'auto' }],
+        };
   },
 });
 

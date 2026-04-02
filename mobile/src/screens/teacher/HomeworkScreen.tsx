@@ -1,12 +1,14 @@
 import { useCallback, useRef, useState } from 'react';
 import {
   StyleSheet, Text, View, TouchableOpacity, FlatList,
-  ActivityIndicator, Alert, RefreshControl, Linking,
+  ActivityIndicator, Alert, RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
 import { homeworkApi } from '../../lib/api';
 import { Colors } from '../../constants/colors';
 import CreateHomeworkScreen from './CreateHomeworkScreen';
@@ -69,10 +71,34 @@ function HomeworkListScreen({
 
   useFocusEffect(useCallback(() => { fetchHomeworks(); }, [fetchHomeworks]));
 
-  const handleOpen = (hw: Homework) => {
-    Linking.openURL(hw.fileUrl).catch(() =>
-      Alert.alert('Hata', 'Dosya açılamadı.')
-    );
+  const [openingId, setOpeningId] = useState<string | null>(null);
+
+  const handleOpen = async (hw: Homework) => {
+    setOpeningId(hw.id);
+    try {
+      const ext = hw.fileType === 'PDF' ? 'pdf' : 'jpg';
+      const localUri = FileSystem.cacheDirectory + `homework_${hw.id}.${ext}`;
+
+      // Önce cache'de var mı bak
+      const info = await FileSystem.getInfoAsync(localUri);
+      if (!info.exists) {
+        await FileSystem.downloadAsync(hw.fileUrl, localUri);
+      }
+
+      const canShare = await Sharing.isAvailableAsync();
+      if (canShare) {
+        await Sharing.shareAsync(localUri, {
+          mimeType: hw.fileType === 'PDF' ? 'application/pdf' : 'image/jpeg',
+          dialogTitle: hw.title,
+        });
+      } else {
+        Alert.alert('Hata', 'Bu cihazda dosya paylaşımı desteklenmiyor.');
+      }
+    } catch {
+      Alert.alert('Hata', 'Dosya açılamadı. Lütfen tekrar deneyin.');
+    } finally {
+      setOpeningId(null);
+    }
   };
 
   const handleDelete = (id: string, title: string) => {
@@ -163,10 +189,17 @@ function HomeworkListScreen({
 
               {/* Aksiyonlar */}
               <View style={styles.actions}>
-                <TouchableOpacity style={styles.openBtn} onPress={() => handleOpen(item)}>
-                  <Text style={styles.openBtnText}>
-                    {item.fileType === 'PDF' ? '📖 PDF Aç' : '🖼️ Görseli Aç'}
-                  </Text>
+                <TouchableOpacity
+                  style={[styles.openBtn, openingId === item.id && { opacity: 0.6 }]}
+                  onPress={() => handleOpen(item)}
+                  disabled={openingId === item.id}
+                >
+                  {openingId === item.id
+                    ? <ActivityIndicator size="small" color={Colors.primary} />
+                    : <Text style={styles.openBtnText}>
+                        {item.fileType === 'PDF' ? '📖 PDF Aç' : '🖼️ Görseli Aç'}
+                      </Text>
+                  }
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.deleteBtn}

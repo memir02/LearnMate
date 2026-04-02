@@ -167,6 +167,8 @@ export const homeworkApi = {
     } as any);
     return api.post('/homework', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 90000, // Cloudinary yüklemesi için 90s
+      transformRequest: [(d) => d], // FormData'yı JSON'a çevirme
     });
   },
 

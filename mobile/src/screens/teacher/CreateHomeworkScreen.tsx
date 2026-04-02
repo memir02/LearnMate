@@ -152,7 +152,10 @@ export default function CreateHomeworkScreen({
         { text: 'Tamam', onPress: () => navigation.goBack() },
       ]);
     } catch (err: any) {
-      const msg = err?.response?.data?.message ?? 'Ödev oluşturulamadı.';
+      const isTimeout = err?.code === 'ECONNABORTED' || err?.message?.includes('timeout');
+      const msg = isTimeout
+        ? 'Dosya yüklemesi zaman aşımına uğradı. Daha küçük bir dosya deneyin veya internet bağlantınızı kontrol edin.'
+        : (err?.response?.data?.message ?? `Ödev oluşturulamadı. (${err?.message ?? 'Bilinmeyen hata'})`);
       Alert.alert('Hata', msg);
     } finally {
       setIsLoading(false);
