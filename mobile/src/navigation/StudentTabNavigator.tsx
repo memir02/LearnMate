@@ -4,7 +4,7 @@ import { Colors } from '../constants/colors';
 
 import StudentHomeScreen from '../screens/student/StudentHomeScreen';
 import StudentTestsStackNavigator from './StudentTestsStackNavigator';
-import StudentClassroomsScreen from '../screens/student/StudentClassroomsScreen';
+import StudentClassroomsStackNavigator from './StudentClassroomsStackNavigator';
 import MyLearnMateScreen from '../screens/student/MyLearnMateScreen';
 import StudentProfileScreen from '../screens/student/StudentProfileScreen';
 
@@ -66,7 +66,7 @@ export default function StudentTabNavigator() {
       />
       <Tab.Screen
         name="Classrooms"
-        component={StudentClassroomsScreen}
+        component={StudentClassroomsStackNavigator}
         options={{
           tabBarLabel: 'Sınıflar',
           tabBarIcon: ({ focused }) => <TabIcon emoji="🏫" focused={focused} />,

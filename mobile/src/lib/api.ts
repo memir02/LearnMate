@@ -60,6 +60,10 @@ export const classroomApi = {
 
   removeMember: (classroomId: string, studentId: string) =>
     api.delete(`/classrooms/${classroomId}/members/${studentId}`),
+
+  leave: (classroomId: string) => api.post(`/classrooms/${classroomId}/leave`),
+
+  getMembers: (classroomId: string) => api.get(`/classrooms/${classroomId}/members`),
 };
 
 // ── Upload ────────────────────────────────────────────
@@ -144,6 +148,7 @@ export const userApi = {
 
 // ── Homework ──────────────────────────────────────────
 export const homeworkApi = {
+  getByClassroom: (classroomId: string) => api.get(`/homework/classroom/${classroomId}`),
   getMyHomeworks: () => api.get('/homework/my'),
 
   create: async (data: {
