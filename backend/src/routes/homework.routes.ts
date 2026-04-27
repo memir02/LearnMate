@@ -3,6 +3,7 @@ import {
   createHomework,
   getMyHomeworks,
   getClassroomHomeworks,
+  getStudentHomeworks,
   deleteHomework,
 } from '../controllers/homework.controller';
 import { authenticate, authorize } from '../middleware/auth.middleware';
@@ -30,6 +31,13 @@ router.post(
  * @access Teacher
  */
 router.get('/my', authorize('TEACHER', 'ADMIN'), getMyHomeworks);
+
+/**
+ * @route  GET /api/homework/student
+ * @desc   Öğrencinin üye olduğu tüm sınıfların ödevleri
+ * @access Student
+ */
+router.get('/student', authorize('STUDENT'), getStudentHomeworks);
 
 /**
  * @route  GET /api/homework/classroom/:classroomId

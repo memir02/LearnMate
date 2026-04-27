@@ -145,6 +145,46 @@ export const getClassroomHomeworks = async (req: AuthRequest, res: Response) => 
   }
 };
 
+// Öğrencinin üye olduğu tüm sınıfların ödevlerini getir
+export const getStudentHomeworks = async (req: AuthRequest, res: Response) => {
+  try {
+    const studentId = req.user?.id;
+
+    // Öğrencinin aktif üyeliklerini bul
+    const memberships = await prisma.classroomMember.findMany({
+      where: { studentId, status: 'ACTIVE' },
+      select: { classroomId: true },
+    });
+
+    const classroomIds = memberships.map((m) => m.classroomId);
+
+    if (classroomIds.length === 0) {
+      return res.status(200).json({ status: 'success', data: [] });
+    }
+
+    const homeworks = await prisma.homework.findMany({
+      where: { classroomId: { in: classroomIds } },
+      include: {
+        classroom: { select: { id: true, name: true } },
+        teacher: {
+          select: {
+            teacher: { select: { firstName: true, lastName: true } },
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return res.status(200).json({ status: 'success', data: homeworks });
+  } catch (error) {
+    console.error('Get student homeworks error:', error);
+    return res.status(500).json({
+      status: 'error',
+      message: 'Ödevler getirilirken bir hata oluştu.',
+    });
+  }
+};
+
 // Ödev sil (Teacher - sadece kendi ödevi)
 export const deleteHomework = async (req: AuthRequest, res: Response) => {
   try {

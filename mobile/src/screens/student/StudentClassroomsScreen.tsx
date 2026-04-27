@@ -103,6 +103,7 @@ export default function StudentClassroomsScreen({ navigation }: Props) {
         </TouchableOpacity>
       </View>
 
+
       {classrooms.length === 0 ? (
         <View style={styles.empty}>
           <Text style={styles.emptyIcon}>🏫</Text>

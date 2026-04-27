@@ -149,6 +149,7 @@ export const userApi = {
 // ── Homework ──────────────────────────────────────────
 export const homeworkApi = {
   getByClassroom: (classroomId: string) => api.get(`/homework/classroom/${classroomId}`),
+  getStudentHomeworks: () => api.get('/homework/student'),
   getMyHomeworks: () => api.get('/homework/my'),
 
   create: async (data: {

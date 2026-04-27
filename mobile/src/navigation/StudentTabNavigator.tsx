@@ -5,6 +5,7 @@ import { Colors } from '../constants/colors';
 import StudentHomeScreen from '../screens/student/StudentHomeScreen';
 import StudentTestsStackNavigator from './StudentTestsStackNavigator';
 import StudentClassroomsStackNavigator from './StudentClassroomsStackNavigator';
+import StudentHomeworkScreen from '../screens/student/StudentHomeworkScreen';
 import MyLearnMateScreen from '../screens/student/MyLearnMateScreen';
 import StudentProfileScreen from '../screens/student/StudentProfileScreen';
 
@@ -12,6 +13,7 @@ export type StudentTabParamList = {
   Home: undefined;
   Tests: undefined;
   Classrooms: undefined;
+  Homework: undefined;
   MyLearnMate: undefined;
   Profile: undefined;
 };
@@ -42,7 +44,7 @@ export default function StudentTabNavigator() {
           height: 62,
         },
         tabBarLabelStyle: {
-          fontSize: 11,
+          fontSize: 10,
           fontWeight: '600',
           marginTop: 2,
         },
@@ -73,10 +75,18 @@ export default function StudentTabNavigator() {
         }}
       />
       <Tab.Screen
+        name="Homework"
+        component={StudentHomeworkScreen}
+        options={{
+          tabBarLabel: 'Ödevlerim',
+          tabBarIcon: ({ focused }) => <TabIcon emoji="📋" focused={focused} />,
+        }}
+      />
+      <Tab.Screen
         name="MyLearnMate"
         component={MyLearnMateScreen}
         options={{
-          tabBarLabel: 'My LearnMate',
+          tabBarLabel: 'LearnMate',
           tabBarIcon: ({ focused }) => <TabIcon emoji="🤖" focused={focused} />,
         }}
       />
