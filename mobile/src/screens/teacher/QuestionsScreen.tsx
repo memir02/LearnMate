@@ -7,6 +7,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { QuestionsStackParamList } from '../../navigation/QuestionsStackNavigator';
 import { questionApi } from '../../lib/api';
 import { Colors } from '../../constants/colors';
@@ -55,6 +56,10 @@ const EMPTY_FILTERS: Filters = { subject: '', topic: '', grade: '', difficulty: 
 const PAGE_LIMIT = 40; // Yeterince büyük tutarak çoğu durumda tek sayfada yüklüyoruz
 
 export default function QuestionsScreen({ navigation }: Props) {
+  const rawTabBarHeight = useBottomTabBarHeight();
+  const tabBarHeight = typeof rawTabBarHeight === 'function'
+    ? (rawTabBarHeight as unknown as () => number)()
+    : rawTabBarHeight;
   const [questions, setQuestions] = useState<Question[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -356,11 +361,13 @@ export default function QuestionsScreen({ navigation }: Props) {
         <FlatList
           data={questions}
           keyExtractor={(item, index) => item.id ?? `fallback-${index}`}
-          contentContainerStyle={styles.list}
+          contentContainerStyle={[styles.list, { paddingBottom: tabBarHeight + 24 }]}
           removeClippedSubviews={false}
           initialNumToRender={50}
           maxToRenderPerBatch={50}
           windowSize={10}
+          scrollIndicatorInsets={{ bottom: 0 }}
+          automaticallyAdjustContentInsets={false}
           refreshControl={
             <RefreshControl
               refreshing={isRefreshing}
@@ -529,7 +536,7 @@ const styles = StyleSheet.create({
   clearBtnText: { fontSize: 12, fontWeight: '700', color: '#dc2626' },
 
   // Liste
-  list: { padding: 16, gap: 12, paddingBottom: 120 },
+  list: { padding: 16, gap: 12 },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10, paddingHorizontal: 40 },
   emptyIcon: { fontSize: 52 },
   emptyTitle: { fontSize: 18, fontWeight: '700', color: Colors.textPrimary },

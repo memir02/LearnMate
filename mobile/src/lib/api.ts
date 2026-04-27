@@ -175,4 +175,10 @@ export const homeworkApi = {
   delete: (id: string) => api.delete(`/homework/${id}`),
 };
 
+// ── AI ────────────────────────────────────────────────
+export const aiApi = {
+  getStudyPlan: () => api.get('/ai/study-plan'),
+  analyzeTest: (studentTestId: string) => api.get(`/ai/analyze/${studentTestId}`),
+};
+
 export default api;
