@@ -175,6 +175,24 @@ export const homeworkApi = {
   delete: (id: string) => api.delete(`/homework/${id}`),
 };
 
+// ── Student Tests ─────────────────────────────────────
+export const studentTestApi = {
+  getAssigned: () => api.get('/student-tests/assigned'),
+  start: (testId: string) => api.post(`/student-tests/${testId}/start`),
+  submitAnswer: (studentTestId: string, data: { questionId: string; selectedOptionId: string }) =>
+    api.post(`/student-tests/${studentTestId}/answer`, data),
+  submit: (studentTestId: string) => api.post(`/student-tests/${studentTestId}/submit`),
+  getResults: (studentTestId: string) => api.get(`/student-tests/${studentTestId}/results`),
+};
+
+// ── Invitations ───────────────────────────────────────
+export const invitationApi = {
+  getPending: () => api.get('/invitations/pending?type=received'),
+  joinByCode: (code: string) => api.post('/invitations/join', { code }),
+  accept: (id: string) => api.patch(`/invitations/${id}/accept`),
+  reject: (id: string) => api.patch(`/invitations/${id}/reject`),
+};
+
 // ── AI ────────────────────────────────────────────────
 export const aiApi = {
   getStudyPlan: () => api.get('/ai/study-plan'),
