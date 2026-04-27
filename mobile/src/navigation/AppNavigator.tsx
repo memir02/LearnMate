@@ -11,7 +11,7 @@ import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 
 // Dashboard ekranları
-import StudentDashboard from '../screens/StudentDashboard';
+import StudentTabNavigator from './StudentTabNavigator';
 import TeacherTabNavigator from './TeacherTabNavigator';
 import AdminDashboard from '../screens/AdminDashboard';
 
@@ -23,7 +23,7 @@ export type AuthStackParamList = {
 };
 
 export type AppStackParamList = {
-  StudentDashboard: undefined;
+  StudentTabs: undefined;
   TeacherTabs: undefined;
   AdminDashboard: undefined;
 };
@@ -63,7 +63,7 @@ function AppNavigatorInner() {
   return (
     <AppStack.Navigator screenOptions={{ headerShown: false }}>
       {user.role === 'STUDENT' && (
-        <AppStack.Screen name="StudentDashboard" component={StudentDashboard} />
+        <AppStack.Screen name="StudentTabs" component={StudentTabNavigator} />
       )}
       {user.role === 'TEACHER' && (
         <AppStack.Screen name="TeacherTabs" component={TeacherTabNavigator} />
