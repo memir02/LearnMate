@@ -3,7 +3,7 @@ import { Text } from 'react-native';
 import { Colors } from '../constants/colors';
 
 import StudentHomeScreen from '../screens/student/StudentHomeScreen';
-import StudentTestsScreen from '../screens/student/StudentTestsScreen';
+import StudentTestsStackNavigator from './StudentTestsStackNavigator';
 import StudentClassroomsScreen from '../screens/student/StudentClassroomsScreen';
 import MyLearnMateScreen from '../screens/student/MyLearnMateScreen';
 import StudentProfileScreen from '../screens/student/StudentProfileScreen';
@@ -58,7 +58,7 @@ export default function StudentTabNavigator() {
       />
       <Tab.Screen
         name="Tests"
-        component={StudentTestsScreen}
+        component={StudentTestsStackNavigator}
         options={{
           tabBarLabel: 'Testler',
           tabBarIcon: ({ focused }) => <TabIcon emoji="📝" focused={focused} />,
