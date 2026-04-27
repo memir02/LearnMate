@@ -135,7 +135,7 @@ export const testApi = {
 
 // ── User / Profile ───────────────────────────────────
 export const userApi = {
-  updateMyProfile: (data: { firstName?: string; lastName?: string; phone?: string }) =>
+  updateMyProfile: (data: { firstName?: string; lastName?: string; phone?: string; grade?: string; parentPhone?: string }) =>
     api.put('/users/me', data),
 
   changeMyPassword: (data: { currentPassword: string; newPassword: string }) =>

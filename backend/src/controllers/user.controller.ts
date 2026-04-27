@@ -297,7 +297,7 @@ export const updateMyProfile = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?.id;
     const role = req.user?.role;
-    const { firstName, lastName, phone } = req.body;
+    const { firstName, lastName, phone, grade, parentPhone } = req.body;
 
     if (role === 'TEACHER') {
       await prisma.teacher.update({
@@ -315,6 +315,8 @@ export const updateMyProfile = async (req: AuthRequest, res: Response) => {
           ...(firstName && { firstName }),
           ...(lastName && { lastName }),
           ...(phone !== undefined && { phone }),
+          ...(grade !== undefined && { grade }),
+          ...(parentPhone !== undefined && { parentPhone }),
         },
       });
     }

@@ -8,7 +8,7 @@ export interface AuthUser {
   id: string;
   email: string;
   role: UserRole;
-  student?: { firstName: string; lastName: string; grade?: string | null; phone?: string | null } | null;
+  student?: { firstName: string; lastName: string; grade?: string | null; phone?: string | null; parentPhone?: string | null } | null;
   teacher?: { firstName: string; lastName: string; phone?: string | null } | null;
 }
 
