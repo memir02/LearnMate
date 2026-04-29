@@ -87,7 +87,7 @@ export default function MyLearnMateScreen() {
           <Text style={styles.loadingRobot}>🤖</Text>
           <ActivityIndicator size="large" color={Colors.primary} style={{ marginTop: 16 }} />
           <Text style={styles.loadingText}>Kişisel çalışma planın hazırlanıyor...</Text>
-          <Text style={styles.loadingSubText}>Gemini AI test sonuçlarını analiz ediyor</Text>
+          <Text style={styles.loadingSubText}>Groq AI test sonuçlarını analiz ediyor</Text>
         </View>
       </SafeAreaView>
     );

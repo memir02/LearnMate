@@ -1,16 +1,51 @@
 import { Response } from 'express';
-import { GoogleGenAI } from '@google/genai';
+import OpenAI from 'openai';
 import prisma from '../config/database';
 import { AuthRequest } from '../middleware/auth.middleware';
 
-const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
+const openai = new OpenAI({
+  baseURL: 'https://openrouter.ai/api/v1',
+  apiKey: process.env.OPENROUTER_API_KEY,
+  defaultHeaders: {
+    'HTTP-Referer': 'https://learnmate.app',
+    'X-Title': 'LearnMate',
+  },
+});
+
+const FREE_MODELS = [
+  'inclusionai/ling-2.6-1t:free',
+  'nvidia/nemotron-3-super-120b-a12b:free',
+  'google/gemma-4-31b-it:free',
+  'google/gemma-4-26b-a4b-it:free',
+];
+
+async function callAI(prompt: string, maxTokens: number): Promise<string> {
+  for (const model of FREE_MODELS) {
+    try {
+      console.log(`🤖 Trying model: ${model}`);
+      const completion = await openai.chat.completions.create({
+        model,
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.7,
+        max_tokens: maxTokens,
+      });
+      const text = completion.choices[0]?.message?.content ?? '';
+      if (text) {
+        console.log(`✅ Model ${model} succeeded`);
+        return text;
+      }
+    } catch (err: any) {
+      console.error(`❌ Model ${model} failed:`, err?.error?.message ?? err?.message ?? err);
+    }
+  }
+  throw new Error('Tüm modeller başarısız oldu.');
+}
 
 // Öğrencinin test sonuçlarını analiz et ve çalışma planı oluştur
 export const getStudyPlan = async (req: AuthRequest, res: Response) => {
   try {
     const studentId = req.user?.id;
 
-    // Öğrencinin tamamlanmış testlerini çek
     const studentTests = await prisma.studentTest.findMany({
       where: {
         studentId,
@@ -39,7 +74,7 @@ export const getStudyPlan = async (req: AuthRequest, res: Response) => {
         },
       },
       orderBy: { submittedAt: 'desc' },
-      take: 20, // Son 20 test
+      take: 20,
     });
 
     if (studentTests.length === 0) {
@@ -52,7 +87,6 @@ export const getStudyPlan = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // Ders bazlı performans hesapla
     const subjectStats: Record<string, { total: number; correct: number; topics: Set<string> }> = {};
 
     studentTests.forEach((st) => {
@@ -65,7 +99,6 @@ export const getStudyPlan = async (req: AuthRequest, res: Response) => {
       if (st.test.topic) subjectStats[subject].topics.add(st.test.topic);
     });
 
-    // Gemini'ye gönderilecek veriyi hazırla
     const performanceSummary = Object.entries(subjectStats).map(([subject, data]) => ({
       ders: subject,
       toplamTest: data.total,
@@ -114,16 +147,10 @@ Lütfen aşağıdaki formatta JSON yanıt ver (başka hiçbir şey yazma, sadece
   "motivasyonMesaji": "Öğrenciye kısa bir motivasyon mesajı"
 }`;
 
-    const result = await genAI.models.generateContent({
-      model: 'gemini-2.0-flash',
-      contents: prompt,
-    });
-    const text = result.text ?? '';
-
-    // JSON'u parse et
+    const text = await callAI(prompt, 2048);
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
-      throw new Error('Gemini geçerli JSON döndürmedi');
+      throw new Error('Geçerli JSON döndürülmedi');
     }
     const plan = JSON.parse(jsonMatch[0]);
 
@@ -138,12 +165,6 @@ Lütfen aşağıdaki formatta JSON yanıt ver (başka hiçbir şey yazma, sadece
     });
   } catch (error: any) {
     console.error('AI study plan error:', error);
-    if (error?.status === 429) {
-      return res.status(429).json({
-        status: 'error',
-        message: 'AI servisi şu an meşgul. Lütfen 1-2 dakika bekleyip tekrar deneyin.',
-      });
-    }
     return res.status(500).json({
       status: 'error',
       message: 'Çalışma planı oluşturulurken bir hata oluştu.',
@@ -202,12 +223,7 @@ Lütfen aşağıdaki formatta JSON yanıt ver (sadece JSON):
   "motivasyon": "kısa motivasyon mesajı"
 }`;
 
-    const result = await genAI.models.generateContent({
-      model: 'gemini-2.0-flash',
-      contents: prompt,
-    });
-    const text = result.text ?? '';
-
+    const text = await callAI(prompt, 1024);
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error('Geçersiz yanıt');
     const analysis = JSON.parse(jsonMatch[0]);
@@ -215,12 +231,6 @@ Lütfen aşağıdaki formatta JSON yanıt ver (sadece JSON):
     return res.status(200).json({ status: 'success', data: analysis });
   } catch (error: any) {
     console.error('AI analyze error:', error);
-    if (error?.status === 429) {
-      return res.status(429).json({
-        status: 'error',
-        message: 'AI servisi şu an meşgul. Lütfen 1-2 dakika bekleyip tekrar deneyin.',
-      });
-    }
     return res.status(500).json({ status: 'error', message: 'Analiz oluşturulamadı.' });
   }
 };

@@ -200,6 +200,23 @@ export const invitationApi = {
 };
 
 // ── AI ────────────────────────────────────────────────
+export const practiceApi = {
+  getPool: (params: { subject?: string; topic?: string; grade?: string; difficulty?: string }) =>
+    api.get('/practice/pool', { params }),
+  startSession: (data: {
+    subject: string;
+    topic?: string;
+    grade: string;
+    questionCount: number;
+    difficulty?: string;
+  }) => api.post('/practice/sessions', data),
+  answerQuestion: (sessionId: string, data: { questionId: string; selectedOptionId: string }) =>
+    api.post(`/practice/sessions/${sessionId}/answer`, data),
+  completeSession: (sessionId: string) => api.post(`/practice/sessions/${sessionId}/complete`),
+  getSession: (sessionId: string) => api.get(`/practice/sessions/${sessionId}`),
+  getSessions: (params?: { limit?: number }) => api.get('/practice/sessions', { params }),
+};
+
 export const aiApi = {
   getStudyPlan: () => api.get('/ai/study-plan'),
   analyzeTest: (studentTestId: string) => api.get(`/ai/analyze/${studentTestId}`),
